@@ -1,0 +1,15 @@
+{
+  "config": {
+    "step": {
+      "bluetooth_confirm": {
+        "title": "SoundSticks 5 found",
+        "description": "Set up the discovered SoundSticks 5 BLE control service?"
+      }
+    },
+    "abort": {
+      "already_configured": "SoundSticks 5 is already configured.",
+      "single_instance_allowed": "Only one SoundSticks 5 entry is supported in this initial release.",
+      "not_found": "No connectable SoundSticks 5 control service is currently visible over Bluetooth."
+    }
+  }
+}

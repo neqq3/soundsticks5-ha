@@ -1,0 +1,15 @@
+{
+  "config": {
+    "step": {
+      "bluetooth_confirm": {
+        "title": "发现 SoundSticks 5",
+        "description": "是否配置已发现的 SoundSticks 5 BLE 控制服务？"
+      }
+    },
+    "abort": {
+      "already_configured": "SoundSticks 5 已配置。",
+      "single_instance_allowed": "初版暂时只支持一个 SoundSticks 5 配置项。",
+      "not_found": "当前没有通过蓝牙发现可连接的 SoundSticks 5 控制服务。"
+    }
+  }
+}
