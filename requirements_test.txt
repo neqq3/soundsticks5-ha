@@ -1,4 +1,3 @@
-aiohttp==3.12.15
 dbus-next==0.2.3
 homeassistant>=2026.8.0,<2027.0
 pytest>=8.4,<10
