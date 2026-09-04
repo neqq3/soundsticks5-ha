@@ -1,0 +1,2 @@
+"""SoundSticks Audio App."""
+

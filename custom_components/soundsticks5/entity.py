@@ -1,4 +1,4 @@
-"""Shared entity base for SoundSticks 5."""
+"""Shared entity bases for SoundSticks 5."""
 
 from __future__ import annotations
 
@@ -21,3 +21,13 @@ class SoundSticksEntity(CoordinatorEntity[SoundSticksCoordinator]):
             manufacturer="Harman Kardon",
             model="SoundSticks 5",
         )
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.ble_available
+
+
+class AudioBackendEntity(SoundSticksEntity):
+    @property
+    def available(self) -> bool:
+        return self.coordinator.backend_enabled and bool(self.coordinator.backend_status.get("available"))

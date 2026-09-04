@@ -1,0 +1,47 @@
+name: SoundSticks Audio
+version: "1.0.0"
+slug: soundsticks5_audio
+description: Local BlueZ/A2DP audio backend for SoundSticks 5
+url: https://github.com/neqq3/soundsticks5-ha
+arch: [aarch64, amd64, armhf, armv7, i386]
+startup: application
+boot: auto
+stage: experimental
+homeassistant: 2026.8.0
+init: false
+host_network: true
+host_dbus: true
+audio: true
+privileged: [NET_ADMIN, NET_RAW]
+map:
+  - type: media
+    read_only: true
+  - type: share
+    read_only: true
+ports:
+  8099/tcp: 8099
+ports_description:
+  8099/tcp: Local integration API
+webui: http://[HOST]:[PORT:8099]/health
+options:
+  adapter: ""
+  device_address: ""
+  device_alias: SoundSticks 5
+  api_token: ""
+  auto_connect: false
+  auto_reconnect: true
+  release_after_playback: true
+  release_delay: 3
+  max_playback_seconds: 21600
+  sink_match: bluez_output
+schema:
+  adapter: str?
+  device_address: str?
+  device_alias: str
+  api_token: password?
+  auto_connect: bool
+  auto_reconnect: bool
+  release_after_playback: bool
+  release_delay: int(0,60)
+  max_playback_seconds: int(1,86400)
+  sink_match: str

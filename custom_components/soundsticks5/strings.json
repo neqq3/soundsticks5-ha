@@ -1,15 +1,61 @@
 {
+  "title": "SoundSticks 5",
   "config": {
     "step": {
-      "bluetooth_confirm": {
-        "title": "SoundSticks 5 found",
-        "description": "Set up the discovered SoundSticks 5 BLE control service?"
-      }
+      "bluetooth_confirm": {"title": "SoundSticks 5 found", "description": "Set up the discovered private BLE control service?"},
+      "user": {"title": "SoundSticks 5", "description": "Make sure the speaker is awake and visible to a Home Assistant Bluetooth adapter."}
     },
-    "abort": {
-      "already_configured": "SoundSticks 5 is already configured.",
-      "single_instance_allowed": "Only one SoundSticks 5 entry is supported in this initial release.",
-      "not_found": "No connectable SoundSticks 5 control service is currently visible over Bluetooth."
+    "error": {"not_found": "No advertisement exposing the private control service is visible."},
+    "abort": {"already_configured": "SoundSticks 5 is already configured.", "single_instance_allowed": "Only one speaker is supported until a stable identity independent of RPA is confirmed."}
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "SoundSticks 5 options",
+        "data": {
+          "enable_audio_backend": "Enable SoundSticks Audio App",
+          "backend_url": "Audio App URL",
+          "backend_token": "Audio App token",
+          "wake_behavior": "Wake behavior",
+          "release_delay": "Wake-release delay",
+          "auto_release": "Release A2DP after playback",
+          "auto_connect": "Connect audio on App startup",
+          "auto_reconnect": "Reconnect audio while needed",
+          "keep_ble_connected": "Keep BLE control connected"
+        }
+      }
     }
+  },
+  "selector": {
+    "wake_behavior": {
+      "options": {
+        "wake_only": "Wake then release immediately",
+        "wake_release": "Wake then release after delay",
+        "wake_keep_connected": "Wake and keep Bluetooth audio connected"
+      }
+    }
+  },
+  "entity": {
+    "light": {"lighting": {"name": "Lighting"}},
+    "select": {
+      "theme": {"name": "Lighting theme", "state": {"ocean": "Ocean", "aurora": "Aurora", "blossom": "Blossom", "sunrise": "Sunrise", "fireplace": "Fireplace", "static": "Static"}},
+      "speed": {"name": "Lighting speed", "state": {"low": "Low", "medium": "Medium", "high": "High"}},
+      "auto_off": {"name": "Auto-off", "state": {"never": "Never", "10_minutes": "10 minutes", "1_hour": "1 hour", "2_hours": "2 hours", "4_hours": "4 hours"}}
+    },
+    "number": {"color_parameter": {"name": "Current theme color"}},
+    "switch": {"feedback_tone": {"name": "Feedback tone"}},
+    "button": {
+      "color_reset": {"name": "Reset current theme color"},
+      "eq_reset": {"name": "Reset EQ"},
+      "wake": {"name": "Wake speaker"},
+      "release_audio": {"name": "Release Bluetooth audio"}
+    },
+    "sensor": {
+      "auto_off_remaining": {"name": "Auto-off remaining"},
+      "backend_availability": {"name": "Audio App availability"},
+      "ble_connection": {"name": "BLE connection"}
+    },
+    "binary_sensor": {"audio_connected": {"name": "Bluetooth audio connected"}},
+    "media_player": {"media_player": {"name": "Media"}}
   }
 }

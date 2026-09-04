@@ -1,112 +1,306 @@
-"""Bluetooth coordinator for SoundSticks 5."""
+"""BLE and optional audio-backend coordinator for SoundSticks 5."""
 
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
 import logging
+from collections.abc import Callable
+from datetime import timedelta
+from typing import Any
 
-from bleak import BleakClient
+from bleak import BleakClient, BleakError
 from bleak.backends.device import BLEDevice
-
+from bleak_retry_connector import establish_connection
 from homeassistant.components import bluetooth
 from homeassistant.components.bluetooth import BluetoothChange, BluetoothServiceInfoBleak
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import COMMAND_UUID, CONTROL_SERVICE_UUID, NOTIFY_UUID, QUERY_LIGHT
-from .protocol import LightState, ProtocolError, parse_light_state
+from .backend import AudioBackendClient, BackendUnavailable
+from .const import (
+    COMMAND_UUID,
+    CONF_AUTO_CONNECT,
+    CONF_BACKEND_TOKEN,
+    CONF_BACKEND_URL,
+    CONF_ENABLE_AUDIO,
+    CONF_KEEP_BLE_CONNECTED,
+    CONTROL_SERVICE_UUID,
+    DEFAULT_BACKEND_URL,
+    NAME,
+    NOTIFY_UUID,
+    QUERY_AGGREGATE,
+    QUERY_AUTO_OFF,
+    QUERY_EQ,
+    QUERY_FEEDBACK,
+    QUERY_LIGHT,
+)
+from .protocol import DeviceState, Frame, ProtocolError, apply_notification
 
 _LOGGER = logging.getLogger(__name__)
+FAST_PAIR_UUID = "0000fe2c-0000-1000-8000-00805f9b34fb"
+WaitPredicate = Callable[[Frame], bool]
 
 
-class SoundSticksCoordinator(DataUpdateCoordinator[LightState]):
-    """Keep the freshest BLEDevice while using short-lived GATT sessions."""
+class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
+    """Own serialized GATT I/O and merge optional audio backend state."""
 
-    def __init__(self, hass: HomeAssistant) -> None:
-        super().__init__(
-            hass,
-            _LOGGER,
-            name="SoundSticks 5",
-            update_interval=timedelta(seconds=30),
-        )
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        super().__init__(hass, _LOGGER, name=NAME, update_interval=timedelta(seconds=30))
+        self.entry = entry
+        self.state = DeviceState()
         self.ble_device: BLEDevice | None = None
-        self._unsub = None
+        self.ble_available = False
+        self.ble_status = "not_seen"
+        self.last_ble_error: str | None = None
+        self.rssi: int | None = None
+        self._client: BleakClient | None = None
+        self._unsubs: list[Callable[[], None]] = []
+        self._backend_task: asyncio.Task[None] | None = None
         self._io_lock = asyncio.Lock()
+        self._waiters: list[tuple[WaitPredicate, asyncio.Future[Frame]]] = []
+        self.backend_status: dict[str, Any] = {"available": False, "audio_connected": False, "playing": False}
+        options = entry.options
+        self.backend_enabled = options.get(CONF_ENABLE_AUDIO, True)
+        self._auto_connect_pending = bool(options.get(CONF_AUTO_CONNECT, False))
+        self.backend = AudioBackendClient(
+            hass,
+            options.get(CONF_BACKEND_URL, DEFAULT_BACKEND_URL),
+            options.get(CONF_BACKEND_TOKEN, ""),
+        )
 
     async def async_start(self) -> None:
-        """Start listening for current advertisements."""
+        """Start watching advertisements without retaining an RPA as identity."""
         for info in bluetooth.async_discovered_service_info(self.hass, connectable=True):
-            if CONTROL_SERVICE_UUID in {u.lower() for u in info.service_uuids}:
-                self.ble_device = info.device
+            if self._matches_advertisement(info):
+                self._remember(info)
                 break
 
         @callback
-        def _on_bluetooth(
-            info: BluetoothServiceInfoBleak, change: BluetoothChange
-        ) -> None:
-            self.ble_device = info.device
+        def _on_bluetooth(info: BluetoothServiceInfoBleak, _change: BluetoothChange) -> None:
+            if self._matches_advertisement(info):
+                self._remember(info)
 
-        self._unsub = bluetooth.async_register_callback(
-            self.hass,
-            _on_bluetooth,
-            {"service_uuid": CONTROL_SERVICE_UUID},
-            bluetooth.BluetoothScanningMode.ACTIVE,
-        )
+        for matcher in (
+            {"service_uuid": CONTROL_SERVICE_UUID, "connectable": True},
+            {"service_data_uuid": FAST_PAIR_UUID, "connectable": True},
+        ):
+            self._unsubs.append(
+                bluetooth.async_register_callback(
+                    self.hass,
+                    _on_bluetooth,
+                    matcher,
+                    bluetooth.BluetoothScanningMode.ACTIVE,
+                )
+            )
+        if self.backend_enabled:
+            self._backend_task = self.hass.async_create_task(
+                self.backend.listen(self._backend_event),
+                "soundsticks5 audio backend events",
+            )
+
+    async def _backend_event(self, event: dict[str, Any]) -> None:
+        """Merge a websocket event and fetch a full state after transitions."""
+        if event.get("event") == "status":
+            self.backend_status = {"available": True, **event}
+        else:
+            try:
+                self.backend_status = {"available": True, **await self.backend.status()}
+            except BackendUnavailable:
+                self.backend_status = {"available": False, "audio_connected": False, "playing": False}
+        self.async_update_listeners()
+
+    def _matches_advertisement(self, info: BluetoothServiceInfoBleak) -> bool:
+        service_uuids = {item.lower() for item in info.service_uuids}
+        if CONTROL_SERVICE_UUID in service_uuids:
+            return True
+        if "soundsticks 5" in (info.name or "").lower():
+            return True
+        # Observed anonymous standby fallback. Identity is still verified by
+        # enumerating the private control service before any command is sent.
+        return not info.name and bytes(info.service_data.get(FAST_PAIR_UUID, b"")) == b"\x00\x00"
+
+    @callback
+    def _remember(self, info: BluetoothServiceInfoBleak) -> None:
+        self.ble_device = info.device
+        self.rssi = info.rssi
+        self.ble_available = True
+        if self.ble_status == "not_seen":
+            self.ble_status = "advertising"
 
     async def async_stop(self) -> None:
-        if self._unsub is not None:
-            self._unsub()
-            self._unsub = None
+        for unsubscribe in self._unsubs:
+            unsubscribe()
+        self._unsubs.clear()
+        if self._backend_task is not None:
+            self._backend_task.cancel()
+            await asyncio.gather(self._backend_task, return_exceptions=True)
+            self._backend_task = None
+        async with self._io_lock:
+            await self._disconnect()
 
-    async def _async_connect(self) -> BleakClient:
+    async def _disconnect(self) -> None:
+        client, self._client = self._client, None
+        if client is not None and client.is_connected:
+            try:
+                await client.disconnect()
+            except Exception as exc:  # pragma: no cover - adapter dependent
+                _LOGGER.debug("BLE disconnect failed: %s", type(exc).__name__)
+        self.ble_status = "advertising" if self.ble_device else "not_seen"
+
+    def _disconnected(self, _client: BleakClient) -> None:
+        self.hass.loop.call_soon_threadsafe(self._mark_disconnected)
+
+    @callback
+    def _mark_disconnected(self) -> None:
+        self.ble_status = "advertising" if self.ble_device else "not_seen"
+
+    async def _ensure_connected(self) -> BleakClient:
         if self.ble_device is None:
-            raise UpdateFailed("SoundSticks 5 has not been seen by Home Assistant Bluetooth")
-        client = BleakClient(self.ble_device, timeout=15.0)
-        await client.connect()
-        service_uuids = {str(service.uuid).lower() for service in client.services}
-        if CONTROL_SERVICE_UUID not in service_uuids:
+            raise UpdateFailed("speaker has not been seen by Home Assistant Bluetooth")
+        if self._client is not None and self._client.is_connected:
+            if self._client.address == self.ble_device.address:
+                return self._client
+            await self._disconnect()
+        self.ble_status = "connecting"
+        client = await establish_connection(
+            BleakClient,
+            self.ble_device,
+            NAME,
+            disconnected_callback=self._disconnected,
+            max_attempts=1,
+        )
+        services = {str(service.uuid).lower() for service in client.services}
+        if CONTROL_SERVICE_UUID not in services:
             await client.disconnect()
-            raise UpdateFailed("Connected device does not expose the SoundSticks 5 control service")
+            raise UpdateFailed("candidate does not expose the private SoundSticks control service")
+        await client.start_notify(NOTIFY_UUID, self._notify_from_bleak)
+        self._client = client
+        self.ble_status = "connected"
+        self.last_ble_error = None
         return client
 
-    async def _async_update_data(self) -> LightState:
+    def _notify_from_bleak(self, _sender: Any, data: bytearray) -> None:
+        self.hass.loop.call_soon_threadsafe(self._handle_notification, bytes(data))
+
+    @callback
+    def _handle_notification(self, raw: bytes) -> None:
         try:
-            return await self.async_query_light()
-        except Exception as exc:
-            raise UpdateFailed(str(exc)) from exc
+            parsed = apply_notification(self.state, raw)
+        except ProtocolError:
+            _LOGGER.debug("Ignoring malformed SoundSticks notification")
+            return
+        for predicate, future in list(self._waiters):
+            if not future.done() and predicate(parsed):
+                future.set_result(parsed)
+        self.async_set_updated_data(self.state)
 
-    async def async_query_light(self) -> LightState:
-        async with self._io_lock:
-            client = await self._async_connect()
-            response = asyncio.get_running_loop().create_future()
+    async def _write_wait(self, payload: bytes, predicate: WaitPredicate, wait_seconds: float = 4) -> Frame:
+        client = await self._ensure_connected()
+        future: asyncio.Future[Frame] = self.hass.loop.create_future()
+        waiter = (predicate, future)
+        self._waiters.append(waiter)
+        try:
+            await client.write_gatt_char(COMMAND_UUID, payload, response=False)
+            return await asyncio.wait_for(future, wait_seconds)
+        finally:
+            self._waiters.remove(waiter)
 
-            def _notify(_sender, data: bytearray) -> None:
-                if response.done():
-                    return
-                raw = bytes(data)
-                if len(raw) >= 2 and raw[0] == 0xAA and raw[1] == 0x32:
-                    response.set_result(raw)
-
+    async def _with_retries(self, operation: Callable[[], Any]) -> Any:
+        last_error: Exception | None = None
+        for attempt in range(3):
             try:
-                await client.start_notify(NOTIFY_UUID, _notify)
-                await client.write_gatt_char(COMMAND_UUID, QUERY_LIGHT, response=False)
-                raw = await asyncio.wait_for(response, timeout=3.0)
-                return parse_light_state(raw)
-            finally:
+                return await operation()
+            except (TimeoutError, OSError, EOFError, BleakError, UpdateFailed) as exc:
+                last_error = exc
+                self.last_ble_error = type(exc).__name__
+                self.ble_status = "retrying"
+                await self._disconnect()
+                if attempt < 2:
+                    await asyncio.sleep(1.5 * (2**attempt))
+        assert last_error is not None
+        raise last_error
+
+    async def _query_locked(self, payload: bytes, response_command: int) -> Frame:
+        return await self._write_wait(payload, lambda item: item.command == response_command)
+
+    async def _refresh_ble_locked(self) -> None:
+        for payload, response in (
+            (QUERY_LIGHT, 0x32),
+            (QUERY_AGGREGATE, 0x42),
+            (QUERY_FEEDBACK, 0xF2),
+            (QUERY_AUTO_OFF, 0xB9),
+            (QUERY_EQ, 0xE2),
+        ):
+            await self._query_locked(payload, response)
+
+    async def _async_update_data(self) -> DeviceState:
+        async def refresh_ble() -> None:
+            async with self._io_lock:
                 try:
-                    await client.stop_notify(NOTIFY_UUID)
-                except Exception:
-                    pass
-                await client.disconnect()
+                    await self._with_retries(self._refresh_ble_locked)
+                    self.ble_available = True
+                finally:
+                    if not self.entry.options.get(CONF_KEEP_BLE_CONNECTED, False):
+                        await self._disconnect()
 
-    async def async_send(self, payload: bytes) -> None:
-        """Send one confirmed setting frame and release the GATT connection."""
-        async with self._io_lock:
-            client = await self._async_connect()
+        try:
+            await refresh_ble()
+        except Exception as exc:
+            self.ble_available = False
+            self.last_ble_error = type(exc).__name__
+            if not self.backend_enabled:
+                raise UpdateFailed("BLE state refresh failed") from exc
+
+        if self.backend_enabled:
             try:
-                await client.write_gatt_char(COMMAND_UUID, payload, response=False)
-                await asyncio.sleep(0.15)
+                status = await self.backend.status()
+                self.backend_status = {"available": True, **status}
+                if self._auto_connect_pending:
+                    self._auto_connect_pending = False
+                    if status.get("paired") and not status.get("audio_connected"):
+                        self.backend_status = {"available": True, **await self.backend.action("connect")}
+            except BackendUnavailable:
+                self.backend_status = {"available": False, "audio_connected": False, "playing": False}
+        return self.state
+
+    async def async_command(
+        self,
+        payload: bytes,
+        *,
+        ack_command: int | None = None,
+        response_command: int | None = None,
+    ) -> None:
+        """Send an allow-listed command and require device confirmation."""
+        if ack_command is None and response_command is None:
+            raise ValueError("a matching ACK or state response is required")
+
+        def predicate(item: Frame) -> bool:
+            if response_command is not None and item.command == response_command:
+                return True
+            return bool(
+                ack_command is not None
+                and item.command == 0x00
+                and len(item.data) == 2
+                and item.data[0] == ack_command
+                and item.data[1] == 0
+            )
+
+        async with self._io_lock:
+            try:
+                await self._with_retries(lambda: self._write_wait(payload, predicate))
             finally:
-                await client.disconnect()
+                if not self.entry.options.get(CONF_KEEP_BLE_CONNECTED, False):
+                    await self._disconnect()
         await self.async_request_refresh()
+
+    async def async_backend_action(self, action: str, **payload: Any) -> dict[str, Any]:
+        if not self.backend_enabled:
+            raise BackendUnavailable("audio backend is disabled")
+        result = await self.backend.action(action, **payload)
+        try:
+            self.backend_status = {"available": True, **await self.backend.status()}
+        except BackendUnavailable:
+            pass
+        self.async_update_listeners()
+        return result

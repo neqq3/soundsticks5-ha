@@ -1,0 +1,34 @@
+import json
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).parents[1]
+
+
+def test_manifest_and_translations_are_valid():
+    manifest = json.loads((ROOT / "custom_components/soundsticks5/manifest.json").read_text(encoding="utf-8"))
+    assert manifest["domain"] == "soundsticks5"
+    assert manifest["config_flow"] is True
+    assert manifest["bluetooth"][0]["service_uuid"].endswith("0000")
+    for path in (ROOT / "custom_components/soundsticks5").glob("**/*.json"):
+        json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_app_configuration_and_build_matrix():
+    app = yaml.safe_load((ROOT / "soundsticks5_audio/config.yaml").read_text(encoding="utf-8"))
+    build = yaml.safe_load((ROOT / "soundsticks5_audio/build.yaml").read_text(encoding="utf-8"))
+    assert app["host_dbus"] is True
+    assert app["audio"] is True
+    assert set(app["arch"]) == set(build["build_from"])
+
+
+def test_high_risk_protocols_are_not_exposed():
+    source = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (ROOT / "custom_components/soundsticks5").glob("*.py")
+    ).lower()
+    assert "arbitrary_write" not in source
+    assert "factory_reset" not in source
+    assert "firmware_update" not in source
+

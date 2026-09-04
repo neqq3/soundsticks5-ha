@@ -1,15 +1,61 @@
 {
+  "title": "SoundSticks 5",
   "config": {
     "step": {
-      "bluetooth_confirm": {
-        "title": "发现 SoundSticks 5",
-        "description": "是否配置已发现的 SoundSticks 5 BLE 控制服务？"
-      }
+      "bluetooth_confirm": {"title": "发现 SoundSticks 5", "description": "是否配置已发现的私有 BLE 控制服务？"},
+      "user": {"title": "SoundSticks 5", "description": "请确认音箱已唤醒，并处于 Home Assistant 蓝牙适配器覆盖范围内。"}
     },
-    "abort": {
-      "already_configured": "SoundSticks 5 已配置。",
-      "single_instance_allowed": "初版暂时只支持一个 SoundSticks 5 配置项。",
-      "not_found": "当前没有通过蓝牙发现可连接的 SoundSticks 5 控制服务。"
+    "error": {"not_found": "当前未发现公开私有控制服务的音箱广播。"},
+    "abort": {"already_configured": "SoundSticks 5 已配置。", "single_instance_allowed": "在确认独立于 RPA 的稳定身份前，仅支持一台音箱。"}
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "SoundSticks 5 选项",
+        "data": {
+          "enable_audio_backend": "启用 SoundSticks 音频 App",
+          "backend_url": "音频 App 地址",
+          "backend_token": "音频 App 令牌",
+          "wake_behavior": "唤醒方式",
+          "release_delay": "唤醒后释放延迟",
+          "auto_release": "播放结束后释放 A2DP",
+          "auto_connect": "音频 App 启动时连接",
+          "auto_reconnect": "需要音频时自动重连",
+          "keep_ble_connected": "保持 BLE 控制连接"
+        }
+      }
     }
+  },
+  "selector": {
+    "wake_behavior": {
+      "options": {
+        "wake_only": "唤醒后立即释放",
+        "wake_release": "唤醒并延迟释放",
+        "wake_keep_connected": "唤醒并保持蓝牙音频连接"
+      }
+    }
+  },
+  "entity": {
+    "light": {"lighting": {"name": "灯光"}},
+    "select": {
+      "theme": {"name": "灯效主题", "state": {"ocean": "海洋", "aurora": "极光", "blossom": "花开", "sunrise": "日出", "fireplace": "暖炉", "static": "静态"}},
+      "speed": {"name": "灯效速度", "state": {"low": "低", "medium": "中", "high": "高"}},
+      "auto_off": {"name": "自动关闭", "state": {"never": "从不", "10_minutes": "10 分钟", "1_hour": "1 小时", "2_hours": "2 小时", "4_hours": "4 小时"}}
+    },
+    "number": {"color_parameter": {"name": "当前主题颜色"}},
+    "switch": {"feedback_tone": {"name": "反馈音"}},
+    "button": {
+      "color_reset": {"name": "重置当前主题颜色"},
+      "eq_reset": {"name": "重置均衡器"},
+      "wake": {"name": "唤醒音箱"},
+      "release_audio": {"name": "释放蓝牙音频"}
+    },
+    "sensor": {
+      "auto_off_remaining": {"name": "自动关闭剩余时间"},
+      "backend_availability": {"name": "音频 App 可用性"},
+      "ble_connection": {"name": "BLE 连接"}
+    },
+    "binary_sensor": {"audio_connected": {"name": "蓝牙音频已连接"}},
+    "media_player": {"media_player": {"name": "媒体"}}
   }
 }

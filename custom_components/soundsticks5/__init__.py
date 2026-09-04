@@ -10,10 +10,14 @@ from .coordinator import SoundSticksCoordinator
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    coordinator = SoundSticksCoordinator(hass)
-    await coordinator.async_start()
-    await coordinator.async_config_entry_first_refresh()
+    coordinator = SoundSticksCoordinator(hass, entry)
     entry.runtime_data = coordinator
+    await coordinator.async_start()
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except Exception:
+        await coordinator.async_stop()
+        raise
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

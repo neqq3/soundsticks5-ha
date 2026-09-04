@@ -1,0 +1,34 @@
+configuration:
+  adapter:
+    name: Bluetooth adapter
+    description: Optional BlueZ address, alias, or adapter name. Empty selects automatically.
+  device_address:
+    name: Classic Bluetooth address
+    description: Optional paired Classic Bluetooth address. Do not use a rotating BLE RPA.
+  device_alias:
+    name: Speaker name
+    description: Name used to locate SoundSticks 5 when no address is configured.
+  api_token:
+    name: API token
+    description: Optional bearer token shared with the Home Assistant integration.
+  auto_connect:
+    name: Connect at startup
+    description: Connect a previously paired speaker when the App starts.
+  auto_reconnect:
+    name: Reconnect during playback
+    description: Reconnect when an active audio job loses A2DP.
+  release_after_playback:
+    name: Release after playback
+    description: Disconnect Bluetooth audio so AUX or another source can take over.
+  release_delay:
+    name: Release delay
+    description: Seconds to wait before releasing A2DP.
+  max_playback_seconds:
+    name: Maximum playback duration
+    description: Hard cleanup timeout for one queue item.
+  sink_match:
+    name: Audio sink match
+    description: Case-insensitive PulseAudio sink-name substring.
+network:
+  8099/tcp: Local integration API
+
