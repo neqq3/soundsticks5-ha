@@ -31,7 +31,7 @@ See [Installation](docs/installation.md). In short:
 2. Restart Home Assistant.
 3. Wake the speaker and accept Bluetooth discovery under Settings → Devices & services, or add SoundSticks 5 manually.
 4. Stop here for BLE-only control. The Audio App is optional.
-5. For wake and playback, add this repository as a Home Assistant App repository, install **SoundSticks Audio**, pair Classic Bluetooth once, and enable the backend in integration options (default `http://127.0.0.1:8099`).
+5. For wake and playback, add this repository as a Home Assistant App repository, install **SoundSticks Audio**, pair Classic Bluetooth once, and enable the backend in integration options. HAOS/Supervised defaults to the host gateway at `http://172.30.32.1:8099`; use an address reachable from Core for other layouts.
 
 One host-managed physical Bluetooth adapter is the primary design target. BLE and Classic Bluetooth remain separate protocol layers, but may share that adapter. Actual concurrency depends on the adapter, BlueZ, proxy type, and speaker state.
 
@@ -48,4 +48,3 @@ Protocol evidence lives in [soundsticks5-protocol](https://github.com/neqq3/soun
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
-

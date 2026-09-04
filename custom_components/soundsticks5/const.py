@@ -26,7 +26,10 @@ CONF_AUTO_RELEASE: Final = "auto_release"
 CONF_AUTO_CONNECT: Final = "auto_connect"
 CONF_AUTO_RECONNECT: Final = "auto_reconnect"
 CONF_KEEP_BLE_CONNECTED: Final = "keep_ble_connected"
-DEFAULT_BACKEND_URL: Final = "http://127.0.0.1:8099"
+# The App uses host networking. Home Assistant OS exposes the host at the
+# Supervisor network gateway; 127.0.0.1 would incorrectly address Core's own
+# container instead of the App.
+DEFAULT_BACKEND_URL: Final = "http://172.30.32.1:8099"
 DEFAULT_WAKE_BEHAVIOR: Final = "wake_release"
 DEFAULT_RELEASE_DELAY: Final = 3
 WAKE_BEHAVIORS: Final = ("wake_only", "wake_release", "wake_keep_connected")

@@ -32,3 +32,7 @@ def test_high_risk_protocols_are_not_exposed():
     assert "factory_reset" not in source
     assert "firmware_update" not in source
 
+
+def test_default_app_url_targets_haos_host_not_core_loopback():
+    source = (ROOT / "custom_components/soundsticks5/const.py").read_text(encoding="utf-8")
+    assert 'DEFAULT_BACKEND_URL: Final = "http://172.30.32.1:8099"' in source

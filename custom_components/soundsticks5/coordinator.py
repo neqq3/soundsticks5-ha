@@ -148,11 +148,16 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
                 _LOGGER.debug("BLE disconnect failed: %s", type(exc).__name__)
         self.ble_status = "advertising" if self.ble_device else "not_seen"
 
-    def _disconnected(self, _client: BleakClient) -> None:
-        self.hass.loop.call_soon_threadsafe(self._mark_disconnected)
+    def _disconnected(self, client: BleakClient) -> None:
+        self.hass.loop.call_soon_threadsafe(self._mark_disconnected, client)
 
     @callback
-    def _mark_disconnected(self) -> None:
+    def _mark_disconnected(self, client: BleakClient) -> None:
+        # A stale callback from a client disposed during RPA rotation must not
+        # overwrite the state of a newer connection.
+        if self._client is not client:
+            return
+        self._client = None
         self.ble_status = "advertising" if self.ble_device else "not_seen"
 
     async def _ensure_connected(self) -> BleakClient:
@@ -170,11 +175,17 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
             disconnected_callback=self._disconnected,
             max_attempts=1,
         )
-        services = {str(service.uuid).lower() for service in client.services}
-        if CONTROL_SERVICE_UUID not in services:
-            await client.disconnect()
-            raise UpdateFailed("candidate does not expose the private SoundSticks control service")
-        await client.start_notify(NOTIFY_UUID, self._notify_from_bleak)
+        try:
+            services = {str(service.uuid).lower() for service in client.services}
+            if CONTROL_SERVICE_UUID not in services:
+                raise UpdateFailed("candidate does not expose the private SoundSticks control service")
+            await client.start_notify(NOTIFY_UUID, self._notify_from_bleak)
+        except Exception:
+            # establish_connection returns an already-connected client.  Do
+            # not leak that link if identity verification or CCCD setup fails.
+            if client.is_connected:
+                await client.disconnect()
+            raise
         self._client = client
         self.ble_status = "connected"
         self.last_ble_error = None

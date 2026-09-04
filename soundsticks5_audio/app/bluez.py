@@ -147,6 +147,15 @@ class BluezManager:
             return address == self.device_address
         return self.alias in {name, alias} or "soundsticks 5" in {name, alias}
 
+    @staticmethod
+    def _is_soundsticks(props: dict[str, Variant]) -> bool:
+        """Reject arbitrary Bluetooth addresses at the pairing boundary."""
+        names = {
+            str(_value(props, "Name", "")).lower(),
+            str(_value(props, "Alias", "")).lower(),
+        }
+        return any("soundsticks" in name for name in names)
+
     async def _device(self, *, require: bool = True) -> tuple[str, dict[str, Variant]] | None:
         for path, interfaces in (await self._objects()).items():
             props = interfaces.get(DEVICE_IFACE)
@@ -194,6 +203,8 @@ class BluezManager:
             item = await self._device()
         assert item is not None
         path, props = item
+        if not self._is_soundsticks(props):
+            raise BluezUnavailable("refusing to pair a device not identified as SoundSticks")
         proxy = await self._proxy(path)
         device = proxy.get_interface(DEVICE_IFACE)
         if not bool(_value(props, "Paired", False)):

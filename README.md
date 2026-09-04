@@ -32,7 +32,7 @@ Harman Kardon SoundSticks 5 的非官方 Home Assistant 本地集成。仓库包
 2. 重启 Home Assistant。
 3. 唤醒音箱，在“设置 → 设备与服务”接受 Bluetooth 发现，或手动添加 SoundSticks 5。
 4. 只需 BLE 控制时到此结束；音频 App 完全可选。
-5. 需要唤醒和播放时，将本仓库加入 Home Assistant App 仓库，安装 **SoundSticks Audio**，进行一次经典蓝牙配对，再在集成选项中启用后端（默认 `http://127.0.0.1:8099`）。
+5. 需要唤醒和播放时，将本仓库加入 Home Assistant App 仓库，安装 **SoundSticks Audio**，进行一次经典蓝牙配对，再在集成选项中启用后端。HAOS/Supervised 默认使用主机网关 `http://172.30.32.1:8099`；其他安装方式请填写 Core 实际可访问的地址。
 
 普通用户只需要一个由 HA 主机管理的蓝牙适配器。BLE 与经典蓝牙是两个独立协议层，但设计上允许共用同一个物理适配器。实际并发能力仍取决于适配器、BlueZ、代理类型和音箱状态。
 

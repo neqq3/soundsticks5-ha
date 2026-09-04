@@ -24,13 +24,12 @@ The App is intended for Home Assistant OS or Supervised installations, where Sup
 3. Install **SoundSticks Audio**.
 4. Start the App and inspect its log/`/health` page.
 5. Put the speaker in Bluetooth pairing mode only for the initial pairing. Call `POST /scan`, then `POST /pair` with the chosen address, or configure an already-paired target. After pairing, normal wake does not require pairing mode.
-6. In the SoundSticks integration options, enable Audio App and keep the default URL when App and HA share the host. Set the same API token in both places if used.
+6. In the SoundSticks integration options, enable Audio App. On HAOS/Supervised, keep the default Supervisor host-gateway URL (`http://172.30.32.1:8099`). For other layouts, enter the address reachable from the Core container. Set the same API token in both places if used.
 
-The App exposes port 8099 on the host network. Do not expose it to the public Internet. Use a non-empty API token on an untrusted LAN.
+The App exposes port 8099 on the host network. `127.0.0.1` is not a valid substitute from a containerized Home Assistant Core because it points back to the Core container. Do not expose the port to the public Internet. Use a non-empty API token on an untrusted LAN.
 
 ## Other HA installation types
 
 - **Home Assistant Container/Core:** custom integration works, but Supervisor cannot install the bundled App. Run the `soundsticks5_audio` container yourself with system D-Bus, PulseAudio socket and BlueZ permissions, then set its reachable URL.
 - **Remote BLE proxy:** BLE control may work. A2DP audio does not traverse an ESPHome Bluetooth proxy; the Audio App needs a Linux Bluetooth adapter local to its BlueZ host.
 - **One adapter:** supported as the primary layout. Avoid separate scanning daemons that seize the same adapter. Hardware/driver limitations can still require tuning.
-

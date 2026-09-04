@@ -131,7 +131,16 @@ class AudioPlayer:
                 except ProcessLookupError:
                     pass
         if processes:
-            await asyncio.gather(*(process.wait() for process in processes), return_exceptions=True)
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*(process.wait() for process in processes), return_exceptions=True),
+                    timeout=3,
+                )
+            except TimeoutError:
+                for process in processes:
+                    if process.returncode is None:
+                        process.kill()
+                await asyncio.gather(*(process.wait() for process in processes), return_exceptions=True)
         self.ffmpeg = self.player = None
 
     async def _play_one(self, item: QueueItem) -> None:
