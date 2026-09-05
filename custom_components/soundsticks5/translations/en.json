@@ -5,7 +5,7 @@
       "bluetooth_confirm": {"title": "SoundSticks 5 found", "description": "Set up the discovered private BLE control service?"},
       "user": {"title": "SoundSticks 5", "description": "Make sure the speaker is awake and visible to a Home Assistant Bluetooth adapter."}
     },
-    "error": {"not_found": "No advertisement exposing the private control service is visible."},
+    "error": {"not_found": "No recognizable SoundSticks 5 advertisement was found."},
     "abort": {"already_configured": "SoundSticks 5 is already configured.", "single_instance_allowed": "Only one speaker is supported until a stable identity independent of RPA is confirmed."}
   },
   "options": {

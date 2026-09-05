@@ -27,6 +27,8 @@ from .const import (
     CONF_KEEP_BLE_CONNECTED,
     CONTROL_SERVICE_UUID,
     DEFAULT_BACKEND_URL,
+    FAST_PAIR_UUID,
+    HARMAN_DISCOVERY_UUID,
     NAME,
     NOTIFY_UUID,
     QUERY_AGGREGATE,
@@ -35,10 +37,10 @@ from .const import (
     QUERY_FEEDBACK,
     QUERY_LIGHT,
 )
+from .discovery import matches_soundsticks5_advertisement
 from .protocol import DeviceState, Frame, ProtocolError, apply_notification
 
 _LOGGER = logging.getLogger(__name__)
-FAST_PAIR_UUID = "0000fe2c-0000-1000-8000-00805f9b34fb"
 WaitPredicate = Callable[[Frame], bool]
 
 
@@ -83,6 +85,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
 
         for matcher in (
             {"service_uuid": CONTROL_SERVICE_UUID, "connectable": True},
+            {"service_uuid": HARMAN_DISCOVERY_UUID, "connectable": True},
             {"service_data_uuid": FAST_PAIR_UUID, "connectable": True},
         ):
             self._unsubs.append(
@@ -111,14 +114,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
         self.async_update_listeners()
 
     def _matches_advertisement(self, info: BluetoothServiceInfoBleak) -> bool:
-        service_uuids = {item.lower() for item in info.service_uuids}
-        if CONTROL_SERVICE_UUID in service_uuids:
-            return True
-        if "soundsticks 5" in (info.name or "").lower():
-            return True
-        # Observed anonymous standby fallback. Identity is still verified by
-        # enumerating the private control service before any command is sent.
-        return not info.name and bytes(info.service_data.get(FAST_PAIR_UUID, b"")) == b"\x00\x00"
+        return matches_soundsticks5_advertisement(info.name, info.service_uuids, info.service_data)
 
     @callback
     def _remember(self, info: BluetoothServiceInfoBleak) -> None:

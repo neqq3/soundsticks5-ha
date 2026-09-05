@@ -7,11 +7,12 @@
   "issue_tracker": "https://github.com/neqq3/soundsticks5-ha/issues",
   "iot_class": "local_push",
   "integration_type": "device",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "requirements": [],
   "dependencies": ["bluetooth"],
   "after_dependencies": ["bluetooth"],
   "bluetooth": [
-    {"service_uuid": "65786365-6c70-6f69-6e74-2e636f6d0000", "connectable": true}
+    {"service_uuid": "65786365-6c70-6f69-6e74-2e636f6d0000", "connectable": true},
+    {"service_uuid": "0000fddf-0000-1000-8000-00805f9b34fb", "local_name": "SoundSticks 5*", "connectable": true}
   ]
 }

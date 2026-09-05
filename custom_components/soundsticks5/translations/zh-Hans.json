@@ -5,7 +5,7 @@
       "bluetooth_confirm": {"title": "发现 SoundSticks 5", "description": "是否配置已发现的私有 BLE 控制服务？"},
       "user": {"title": "SoundSticks 5", "description": "请确认音箱已唤醒，并处于 Home Assistant 蓝牙适配器覆盖范围内。"}
     },
-    "error": {"not_found": "当前未发现公开私有控制服务的音箱广播。"},
+    "error": {"not_found": "当前未发现可识别的 SoundSticks 5 广播。"},
     "abort": {"already_configured": "SoundSticks 5 已配置。", "single_instance_allowed": "在确认独立于 RPA 的稳定身份前，仅支持一台音箱。"}
   },
   "options": {

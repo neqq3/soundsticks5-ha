@@ -21,7 +21,6 @@ from .const import (
     CONF_KEEP_BLE_CONNECTED,
     CONF_RELEASE_DELAY,
     CONF_WAKE_BEHAVIOR,
-    CONTROL_SERVICE_UUID,
     DEFAULT_BACKEND_URL,
     DEFAULT_RELEASE_DELAY,
     DEFAULT_WAKE_BEHAVIOR,
@@ -29,6 +28,7 @@ from .const import (
     NAME,
     WAKE_BEHAVIORS,
 )
+from .discovery import matches_soundsticks5_advertisement
 
 
 class SoundSticks5ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -51,7 +51,7 @@ class SoundSticks5ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         candidates = [
             info
             for info in bluetooth.async_discovered_service_info(self.hass, connectable=True)
-            if CONTROL_SERVICE_UUID in {uuid.lower() for uuid in info.service_uuids}
+            if matches_soundsticks5_advertisement(info.name, info.service_uuids, info.service_data)
         ]
         if not candidates:
             return self.async_show_form(step_id="user", errors={"base": "not_found"})
