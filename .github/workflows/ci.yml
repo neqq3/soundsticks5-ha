@@ -17,6 +17,7 @@ jobs:
           - homeassistant: "2025.12.2"
             python: "3.13"
             bluetooth_requirements: >-
+              "pycares<5"
               aiousbwatcher==1.1.1 pyserial==3.5
               bleak==1.0.1 bleak-retry-connector==4.4.3
               bluetooth-adapters==2.1.0 bluetooth-auto-recovery==1.5.3
