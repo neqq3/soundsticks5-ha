@@ -16,15 +16,31 @@ jobs:
         include:
           - homeassistant: "2025.12.2"
             python: "3.13"
+            bluetooth_requirements: >-
+              aiousbwatcher==1.1.1 pyserial==3.5
+              bleak==1.0.1 bleak-retry-connector==4.4.3
+              bluetooth-adapters==2.1.0 bluetooth-auto-recovery==1.5.3
+              bluetooth-data-tools==1.28.4 dbus-fast==3.1.2 habluetooth==5.7.0
           - homeassistant: "2026.8.0"
             python: "3.14"
+            bluetooth_requirements: >-
+              aiousbwatcher==1.1.2 serialx==1.8.2
+              bleak==3.0.2 bleak-retry-connector==4.6.3
+              bluetooth-adapters==2.4.0 bluetooth-auto-recovery==1.6.4
+              bluetooth-data-tools==1.29.18 dbus-fast==5.0.22 habluetooth==6.26.5
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
           cache: pip
-      - run: python -m pip install "homeassistant==${{ matrix.homeassistant }}" -r requirements_test.txt
+      - name: Install version-matched Home Assistant and Bluetooth dependencies
+        run: >-
+          python -m pip install
+          -c "https://raw.githubusercontent.com/home-assistant/core/${{ matrix.homeassistant }}/homeassistant/package_constraints.txt"
+          "homeassistant==${{ matrix.homeassistant }}"
+          ${{ matrix.bluetooth_requirements }}
+          -r requirements_test.txt
       - run: ruff check custom_components soundsticks5_audio tests
       - run: python -m compileall -q custom_components soundsticks5_audio
       - run: pytest -q
