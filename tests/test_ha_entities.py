@@ -16,14 +16,16 @@ def coordinator(state: DeviceState):
         state=state,
         data=state,
         ble_available=True,
-        backend_enabled=False,
-        backend_status={"available": False},
+        ble_device=SimpleNamespace(address="rpa"),
         last_update_success=True,
         async_add_listener=lambda _listener, _context=None: lambda: None,
         async_command=AsyncMock(),
         async_set_eq=AsyncMock(),
         async_set_eq_band=AsyncMock(),
-        async_backend_action=AsyncMock(),
+        async_media_command=AsyncMock(),
+        async_toggle_playback=AsyncMock(),
+        async_refresh_state=AsyncMock(),
+        async_release_ble=AsyncMock(),
         entry=SimpleNamespace(options={}),
     )
 
@@ -59,8 +61,34 @@ async def test_eq_entity_preserves_other_bands():
     fake.async_set_eq_band.assert_awaited_once_with(3, 6)
 
 
-def test_media_player_survives_missing_optional_backend():
+def test_media_player_exposes_ble_state():
     fake = coordinator(DeviceState(playback=1, volume=37))
     entity = SoundSticksMediaPlayer(fake)
     assert entity.available is True
     assert entity.volume_level == 0.37
+
+
+@pytest.mark.parametrize(
+    ("method_name", "expected_frame"),
+    [
+        ("async_media_pause", "aa430400410101"),
+        ("async_media_play", "aa430400410102"),
+    ],
+)
+async def test_media_transport_always_uses_ble_and_updates_state_after_ack(
+    method_name: str, expected_frame: str
+):
+    fake = coordinator(DeviceState(playback=2))
+    entity = SoundSticksMediaPlayer(fake)
+
+    await getattr(entity, method_name)()
+
+    assert fake.async_media_command.await_args.args[0].hex() == expected_frame
+    assert fake.state.playback == 2
+
+
+async def test_app_style_play_pause_uses_coordinator_toggle():
+    fake = coordinator(DeviceState(playback=2))
+    entity = SoundSticksMediaPlayer(fake)
+    await entity.async_media_play_pause()
+    fake.async_toggle_playback.assert_awaited_once_with()

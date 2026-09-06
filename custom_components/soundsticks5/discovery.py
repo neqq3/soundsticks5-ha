@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 
 from .const import CONTROL_SERVICE_UUID, FAST_PAIR_UUID, HARMAN_DISCOVERY_UUID
+
+_ADDRESS_LIKE_NAME = re.compile(r"^(?:[0-9A-F]{2}[:-]){5}[0-9A-F]{2}$", re.IGNORECASE)
 
 
 def matches_soundsticks5_advertisement(
@@ -27,4 +30,9 @@ def matches_soundsticks5_advertisement(
         return True
     if "soundsticks 5" in (name or "").lower() and HARMAN_DISCOVERY_UUID in normalized_uuids:
         return True
-    return not name and normalized_data.get(FAST_PAIR_UUID) == b"\x00\x00"
+    # BlueZ/HA may expose the address as BLEDevice.name when the advertising
+    # packet has no local name.  Treat both representations as anonymous.  A
+    # connection is still verified against the private GATT service before any
+    # command is sent.
+    anonymous = not name or bool(_ADDRESS_LIKE_NAME.fullmatch(name))
+    return anonymous and normalized_data.get(FAST_PAIR_UUID) == b"\x00\x00"

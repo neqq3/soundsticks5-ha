@@ -15,7 +15,14 @@ from .protocol import build_auto_off, build_speed, build_theme
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
-    async_add_entities([SoundSticksTheme(coordinator), SoundSticksSpeed(coordinator), SoundSticksAutoOff(coordinator)])
+    async_add_entities(
+        [
+            SoundSticksTheme(coordinator),
+            SoundSticksSpeed(coordinator),
+            SoundSticksAutoOff(coordinator),
+            SoundSticksPreset(coordinator),
+        ]
+    )
 
 
 class SoundSticksTheme(SoundSticksEntity, SelectEntity):
@@ -75,3 +82,28 @@ class SoundSticksAutoOff(SoundSticksEntity, SelectEntity):
             ack_command=0xBA,
             state_update=lambda state: setattr(state, "auto_off_configured", AUTO_OFF_SECONDS[option]),
         )
+
+
+class SoundSticksPreset(SoundSticksEntity, SelectEntity):
+    """User-defined, HA-persisted sound and lighting snapshots."""
+
+    _attr_translation_key = "preset"
+    _attr_icon = "mdi:bookmark-music-outline"
+
+    def __init__(self, coordinator: SoundSticksCoordinator) -> None:
+        super().__init__(coordinator, "preset")
+
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def options(self) -> list[str]:
+        return sorted(self.coordinator.presets)
+
+    @property
+    def current_option(self) -> str | None:
+        return self.coordinator.last_applied_preset
+
+    async def async_select_option(self, option: str) -> None:
+        await self.coordinator.async_apply_preset(option)

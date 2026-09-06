@@ -12,4 +12,3 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]
-"soundsticks5_audio/app/bluez.py" = ["UP037", "F821"]

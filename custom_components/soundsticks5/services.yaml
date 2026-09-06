@@ -1,0 +1,33 @@
+save_preset:
+  name: Save preset
+  description: Refresh the speaker state and save its lighting, volume, EQ, feedback-tone and auto-off settings.
+  fields:
+    name:
+      name: Name
+      description: A short name for the preset.
+      required: true
+      example: Evening
+      selector:
+        text:
+
+apply_preset:
+  name: Apply preset
+  description: Apply a previously saved preset. This is not transactional; confirmed settings are sent in sequence.
+  fields:
+    name:
+      name: Name
+      required: true
+      example: Evening
+      selector:
+        text:
+
+delete_preset:
+  name: Delete preset
+  description: Delete a saved preset without changing the speaker.
+  fields:
+    name:
+      name: Name
+      required: true
+      example: Evening
+      selector:
+        text:

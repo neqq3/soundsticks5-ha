@@ -12,8 +12,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
     return {
         "integration_version": VERSION,
         "options": {
-            key: ("REDACTED" if "token" in key else value)
-            for key, value in entry.options.items()
+            "preset_count": len(coordinator.presets),
         },
         "ble": {
             "available": coordinator.ble_available,
@@ -21,10 +20,6 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigE
             "rssi": coordinator.rssi,
             "last_error_type": coordinator.last_ble_error,
             "address": "REDACTED" if coordinator.ble_device else None,
-        },
-        "backend": {
-            key: ("REDACTED" if key in {"title", "artist", "source", "address", "device_path"} else value)
-            for key, value in coordinator.backend_status.items()
         },
         "state": {
             "light_power": state.light_power,

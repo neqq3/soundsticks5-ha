@@ -1,8 +1,6 @@
 import json
 from pathlib import Path
 
-import yaml
-
 ROOT = Path(__file__).parents[1]
 
 
@@ -23,14 +21,6 @@ def test_manifest_and_translations_are_valid():
     assert f'VERSION: Final = "{manifest["version"]}"' in constants
 
 
-def test_app_configuration_and_build_matrix():
-    app = yaml.safe_load((ROOT / "soundsticks5_audio/config.yaml").read_text(encoding="utf-8"))
-    build = yaml.safe_load((ROOT / "soundsticks5_audio/build.yaml").read_text(encoding="utf-8"))
-    assert app["host_dbus"] is True
-    assert app["audio"] is True
-    assert set(app["arch"]) == set(build["build_from"])
-
-
 def test_high_risk_protocols_are_not_exposed():
     source = "\n".join(
         path.read_text(encoding="utf-8")
@@ -41,16 +31,17 @@ def test_high_risk_protocols_are_not_exposed():
     assert "firmware_update" not in source
 
 
-def test_default_app_url_targets_haos_host_not_core_loopback():
-    source = (ROOT / "custom_components/soundsticks5/const.py").read_text(encoding="utf-8")
-    assert 'DEFAULT_BACKEND_URL: Final = "http://172.30.32.1:8099"' in source
-
-
 def test_ble_coordinator_has_no_periodic_poll_or_post_command_refresh():
     source = (ROOT / "custom_components/soundsticks5/coordinator.py").read_text(encoding="utf-8")
     assert "update_interval=None" in source
     assert "timedelta(seconds=30)" not in source
     assert "await self.async_request_refresh()" not in source
+
+
+def test_audio_app_is_not_exposed_to_home_assistant_users():
+    assert not (ROOT / "repository.yaml").exists()
+    assert not (ROOT / "soundsticks5_audio/config.yaml").exists()
+    assert (ROOT / "soundsticks5_audio/ARCHIVED.md").exists()
 
 
 def test_chinese_theme_names_match_hk_one():

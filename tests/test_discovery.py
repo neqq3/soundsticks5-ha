@@ -20,6 +20,11 @@ def test_matches_private_control_service_advertisement():
 
 def test_matches_observed_anonymous_standby_marker():
     assert matches_soundsticks5_advertisement(None, [FAST_PAIR_UUID], {FAST_PAIR_UUID: b"\x00\x00"})
+    assert matches_soundsticks5_advertisement(
+        "00:11:22:33:44:55",
+        [FAST_PAIR_UUID],
+        {FAST_PAIR_UUID: b"\x00\x00"},
+    )
 
 
 def test_rejects_other_harman_and_fast_pair_devices():
@@ -28,4 +33,9 @@ def test_rejects_other_harman_and_fast_pair_devices():
         None,
         [FAST_PAIR_UUID],
         {FAST_PAIR_UUID: bytes.fromhex("08 a0 d5")},
+    )
+    assert not matches_soundsticks5_advertisement(
+        "Named Fast Pair device",
+        [FAST_PAIR_UUID],
+        {FAST_PAIR_UUID: b"\x00\x00"},
     )

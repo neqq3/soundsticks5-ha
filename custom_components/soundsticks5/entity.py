@@ -24,10 +24,8 @@ class SoundSticksEntity(CoordinatorEntity[SoundSticksCoordinator]):
 
     @property
     def available(self) -> bool:
-        return self.coordinator.ble_available
-
-
-class AudioBackendEntity(SoundSticksEntity):
-    @property
-    def available(self) -> bool:
-        return self.coordinator.backend_enabled and bool(self.coordinator.backend_status.get("available"))
+        # A failed/contended GATT attempt does not mean the rotating-address
+        # speaker disappeared.  Keep controls actionable when discovery still
+        # has a candidate so an explicit user command can perform the bounded
+        # reconnect path.
+        return self.coordinator.ble_device is not None

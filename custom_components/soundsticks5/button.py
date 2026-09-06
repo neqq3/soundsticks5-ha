@@ -1,4 +1,4 @@
-"""Safe reset, wake and release buttons."""
+"""Safe reset, refresh and GATT-release buttons."""
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
@@ -6,15 +6,22 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_RELEASE_DELAY, CONF_WAKE_BEHAVIOR, DEFAULT_RELEASE_DELAY, DEFAULT_WAKE_BEHAVIOR, THEMES
+from .const import THEMES
 from .coordinator import SoundSticksCoordinator
-from .entity import AudioBackendEntity, SoundSticksEntity
+from .entity import SoundSticksEntity
 from .protocol import build_color_reset
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
-    async_add_entities([SoundSticksColorReset(coordinator), SoundSticksEqReset(coordinator), SoundSticksWake(coordinator), SoundSticksRelease(coordinator)])
+    async_add_entities(
+        [
+            SoundSticksRefreshState(coordinator),
+            SoundSticksReleaseBle(coordinator),
+            SoundSticksColorReset(coordinator),
+            SoundSticksEqReset(coordinator),
+        ]
+    )
 
 
 class SoundSticksColorReset(SoundSticksEntity, ButtonEntity):
@@ -47,31 +54,31 @@ class SoundSticksEqReset(SoundSticksEntity, ButtonEntity):
         await self.coordinator.async_set_eq([0] * 7)
 
 
-class SoundSticksWake(AudioBackendEntity, ButtonEntity):
-    _attr_translation_key = "wake"
-    _attr_icon = "mdi:power-on"
+class SoundSticksRefreshState(SoundSticksEntity, ButtonEntity):
+    _attr_translation_key = "refresh_state"
+    _attr_icon = "mdi:refresh"
 
     def __init__(self, coordinator: SoundSticksCoordinator) -> None:
-        super().__init__(coordinator, "wake")
+        super().__init__(coordinator, "refresh_state")
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.ble_device is not None
 
     async def async_press(self) -> None:
-        options = self.coordinator.entry.options
-        behavior = options.get(CONF_WAKE_BEHAVIOR, DEFAULT_WAKE_BEHAVIOR)
-        delay = options.get(CONF_RELEASE_DELAY, DEFAULT_RELEASE_DELAY)
-        if behavior == "wake_release":
-            await self.coordinator.async_backend_action("wake-release", delay=delay)
-        elif behavior == "wake_only":
-            await self.coordinator.async_backend_action("wake-release", delay=0)
-        else:
-            await self.coordinator.async_backend_action("wake", keep_connected=True)
+        await self.coordinator.async_refresh_state()
 
 
-class SoundSticksRelease(AudioBackendEntity, ButtonEntity):
-    _attr_translation_key = "release_audio"
+class SoundSticksReleaseBle(SoundSticksEntity, ButtonEntity):
+    _attr_translation_key = "release_ble"
     _attr_icon = "mdi:bluetooth-off"
 
     def __init__(self, coordinator: SoundSticksCoordinator) -> None:
-        super().__init__(coordinator, "release_audio")
+        super().__init__(coordinator, "release_ble")
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.ble_device is not None
 
     async def async_press(self) -> None:
-        await self.coordinator.async_backend_action("disconnect")
+        await self.coordinator.async_release_ble()

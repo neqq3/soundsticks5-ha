@@ -42,12 +42,6 @@ jobs:
           "homeassistant==${{ matrix.homeassistant }}"
           ${{ matrix.bluetooth_requirements }}
           -r requirements_test.txt
-      - run: ruff check custom_components soundsticks5_audio tests
-      - run: python -m compileall -q custom_components soundsticks5_audio
+      - run: ruff check custom_components tests
+      - run: python -m compileall -q custom_components
       - run: pytest -q
-
-  audio-app-image:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - run: docker build --build-arg BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.21 soundsticks5_audio

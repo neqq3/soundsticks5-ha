@@ -11,25 +11,14 @@
 
 The integration verifies the private service before writing. A name or anonymous advertisement alone is insufficient. It does not periodically connect merely to poll state: after one startup snapshot, notifications and explicit commands drive updates. Commands get one bounded retry and share a short idle connection grace period. Inspect the BLE diagnostic entity and retry after another GATT client releases its connection. Persistent BLE is off by default because it can increase contention.
 
-## Wake does nothing
+## App changes do not appear in Home Assistant
 
-Wake requires one successful Classic Bluetooth pairing. BLE play/next/light commands are not reliable wake commands. Confirm `/status` reports `paired=true`; pairing mode is only needed for first pairing.
+Notifications can update Home Assistant only while its GATT session is connected. Press **Refresh all states** after changing settings in HK One. Periodic polling is intentionally avoided because it would repeatedly compete for the same control connection.
 
-## BlueZ connects but no audio sink appears
+## HK One cannot acquire control
 
-- Confirm `audio_connected=true` and `a2dp_sink=true`.
-- Check that the host created a `bluez_output...` PulseAudio/PipeWire sink.
-- Adjust `sink_match` only for multiple sinks or different naming.
-- Container/Core users must mount system D-Bus and the audio socket themselves.
-
-## AUX does not take over
-
-Press **Release Bluetooth Audio** or enable release-after-playback. A connected A2DP source may retain priority while silent.
-
-## Audio is too loud
-
-Set volume before playback. Initial hardware validation should use silence or a low-level file. BLE volume is direct `0..100`, not AVRCP `0..127`.
+Press **Release BLE control**. This closes only Home Assistant's GATT session and does not disconnect the current Bluetooth audio source. The integration also releases automatically after a short idle grace period.
 
 ## Privacy
 
-Normal integration logs omit addresses and nearby advertisement payloads. Diagnostics redact address, token, media source, title, and artist. BlueZ system logs are outside this integration and may include device identifiers.
+Normal integration logs omit addresses and nearby advertisement payloads. Diagnostics redact address, title, and artist. Bluetooth host logs are outside this integration and may include device identifiers.

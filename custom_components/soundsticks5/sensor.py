@@ -13,7 +13,13 @@ from .entity import SoundSticksEntity
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
-    async_add_entities([SoundSticksAutoOffRemaining(coordinator), SoundSticksBackendAvailability(coordinator), SoundSticksBleStatus(coordinator)])
+    async_add_entities(
+        [
+            SoundSticksAutoOffRemaining(coordinator),
+            SoundSticksOperatingState(coordinator),
+            SoundSticksBleStatus(coordinator),
+        ]
+    )
 
 
 class SoundSticksAutoOffRemaining(SoundSticksEntity, SensorEntity):
@@ -27,25 +33,6 @@ class SoundSticksAutoOffRemaining(SoundSticksEntity, SensorEntity):
     @property
     def native_value(self) -> int | None:
         return self.coordinator.state.auto_off_remaining
-
-
-class SoundSticksBackendAvailability(SoundSticksEntity, SensorEntity):
-    _attr_translation_key = "backend_availability"
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_icon = "mdi:audio-video"
-
-    def __init__(self, coordinator: SoundSticksCoordinator) -> None:
-        super().__init__(coordinator, "backend_availability")
-
-    @property
-    def available(self) -> bool:
-        return True
-
-    @property
-    def native_value(self) -> str:
-        if not self.coordinator.backend_enabled:
-            return "disabled"
-        return "available" if self.coordinator.backend_status.get("available") else "unavailable"
 
 
 class SoundSticksBleStatus(SoundSticksEntity, SensorEntity):
@@ -68,3 +55,27 @@ class SoundSticksBleStatus(SoundSticksEntity, SensorEntity):
     def extra_state_attributes(self):
         return {"rssi": self.coordinator.rssi, "last_error_type": self.coordinator.last_ble_error}
 
+
+class SoundSticksOperatingState(SoundSticksEntity, SensorEntity):
+    """Conservative timer/media-derived state; not a physical-power claim."""
+
+    _attr_translation_key = "operating_state"
+    _attr_icon = "mdi:power-sleep"
+
+    def __init__(self, coordinator: SoundSticksCoordinator) -> None:
+        super().__init__(coordinator, "operating_state")
+
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def native_value(self) -> str:
+        return self.coordinator.operating_state
+
+    @property
+    def extra_state_attributes(self):
+        return {
+            "basis": "playback_and_auto_off_timer",
+            "ble_control_available": self.coordinator.ble_available,
+        }
