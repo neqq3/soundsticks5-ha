@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable
-from datetime import timedelta
 from typing import Any
 
 from bleak import BleakClient, BleakError
@@ -19,6 +18,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .backend import AudioBackendClient, BackendUnavailable
 from .const import (
+    BLE_IDLE_DISCONNECT_SECONDS,
     COMMAND_UUID,
     CONF_AUTO_CONNECT,
     CONF_BACKEND_TOKEN,
@@ -48,7 +48,10 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
     """Own serialized GATT I/O and merge optional audio backend state."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
-        super().__init__(hass, _LOGGER, name=NAME, update_interval=timedelta(seconds=30))
+        # After one startup snapshot, notifications and explicit commands own
+        # BLE state. A periodic full refresh caused proxy-side connection
+        # storms and made commands wait behind failed polls.
+        super().__init__(hass, _LOGGER, name=NAME, update_interval=None)
         self.entry = entry
         self.state = DeviceState()
         self.ble_device: BLEDevice | None = None
@@ -57,6 +60,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
         self.last_ble_error: str | None = None
         self.rssi: int | None = None
         self._client: BleakClient | None = None
+        self._disconnect_task: asyncio.Task[None] | None = None
         self._unsubs: list[Callable[[], None]] = []
         self._backend_task: asyncio.Task[None] | None = None
         self._io_lock = asyncio.Lock()
@@ -118,11 +122,14 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
 
     @callback
     def _remember(self, info: BluetoothServiceInfoBleak) -> None:
+        became_available = not self.ble_available
         self.ble_device = info.device
         self.rssi = info.rssi
         self.ble_available = True
         if self.ble_status == "not_seen":
             self.ble_status = "advertising"
+        if became_available:
+            self.async_update_listeners()
 
     async def async_stop(self) -> None:
         for unsubscribe in self._unsubs:
@@ -132,8 +139,36 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
             self._backend_task.cancel()
             await asyncio.gather(self._backend_task, return_exceptions=True)
             self._backend_task = None
+        self._cancel_scheduled_disconnect()
         async with self._io_lock:
             await self._disconnect()
+
+    def _cancel_scheduled_disconnect(self) -> None:
+        task, self._disconnect_task = self._disconnect_task, None
+        if task is not None and task is not asyncio.current_task():
+            task.cancel()
+
+    def _schedule_disconnect(self) -> None:
+        """Release an idle GATT session without breaking a command burst."""
+        if self.entry.options.get(CONF_KEEP_BLE_CONNECTED, False):
+            return
+        self._cancel_scheduled_disconnect()
+        self._disconnect_task = self.hass.async_create_task(
+            self._disconnect_after_idle(),
+            "soundsticks5 idle BLE disconnect",
+        )
+
+    async def _disconnect_after_idle(self) -> None:
+        try:
+            await asyncio.sleep(BLE_IDLE_DISCONNECT_SECONDS)
+            async with self._io_lock:
+                await self._disconnect()
+                self.async_update_listeners()
+        except asyncio.CancelledError:
+            return
+        finally:
+            if self._disconnect_task is asyncio.current_task():
+                self._disconnect_task = None
 
     async def _disconnect(self) -> None:
         client, self._client = self._client, None
@@ -155,13 +190,17 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
             return
         self._client = None
         self.ble_status = "advertising" if self.ble_device else "not_seen"
+        self.async_update_listeners()
 
     async def _ensure_connected(self) -> BleakClient:
+        self._cancel_scheduled_disconnect()
         if self.ble_device is None:
             raise UpdateFailed("speaker has not been seen by Home Assistant Bluetooth")
         if self._client is not None and self._client.is_connected:
-            if self._client.address == self.ble_device.address:
-                return self._client
+            # A later advertisement may carry a new RPA while the current
+            # connection is still valid. Keep the live link authoritative.
+            return self._client
+        if self._client is not None:
             await self._disconnect()
         self.ble_status = "connecting"
         client = await establish_connection(
@@ -215,7 +254,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
 
     async def _with_retries(self, operation: Callable[[], Any]) -> Any:
         last_error: Exception | None = None
-        for attempt in range(3):
+        for attempt in range(2):
             try:
                 return await operation()
             except (TimeoutError, OSError, EOFError, BleakError, UpdateFailed) as exc:
@@ -223,7 +262,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
                 self.last_ble_error = type(exc).__name__
                 self.ble_status = "retrying"
                 await self._disconnect()
-                if attempt < 2:
+                if attempt < 1:
                     await asyncio.sleep(1.5 * (2**attempt))
         assert last_error is not None
         raise last_error
@@ -248,16 +287,17 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
                     await self._with_retries(self._refresh_ble_locked)
                     self.ble_available = True
                 finally:
-                    if not self.entry.options.get(CONF_KEEP_BLE_CONNECTED, False):
-                        await self._disconnect()
+                    self._schedule_disconnect()
 
         try:
             await refresh_ble()
         except Exception as exc:
             self.ble_available = False
             self.last_ble_error = type(exc).__name__
-            if not self.backend_enabled:
-                raise UpdateFailed("BLE state refresh failed") from exc
+            # Discovery and an explicit command can recover later. Do not
+            # reject config-entry setup merely because another central owns
+            # GATT or a remote proxy is temporarily unavailable at startup.
+            _LOGGER.debug("Initial BLE state snapshot failed: %s", type(exc).__name__)
 
         if self.backend_enabled:
             try:
@@ -297,9 +337,10 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
             try:
                 await self._with_retries(lambda: self._write_wait(payload, predicate))
             finally:
-                if not self.entry.options.get(CONF_KEEP_BLE_CONNECTED, False):
-                    await self._disconnect()
-        await self.async_request_refresh()
+                self._schedule_disconnect()
+        # Matching notifications have already updated the cache. Avoid the
+        # former five-query refresh and its extra reconnect after every write.
+        self.async_set_updated_data(self.state)
 
     async def async_backend_action(self, action: str, **payload: Any) -> dict[str, Any]:
         if not self.backend_enabled:

@@ -9,7 +9,7 @@
 
 ## BLE advertises but commands fail
 
-The integration verifies the private service before writing. A name or anonymous advertisement alone is insufficient. Let bounded retries finish, inspect the BLE diagnostic entity, and retry after another GATT client releases its connection. Persistent BLE is off by default because it can increase contention.
+The integration verifies the private service before writing. A name or anonymous advertisement alone is insufficient. It does not periodically connect merely to poll state: after one startup snapshot, notifications and explicit commands drive updates. Commands get one bounded retry and share a short idle connection grace period. Inspect the BLE diagnostic entity and retry after another GATT client releases its connection. Persistent BLE is off by default because it can increase contention.
 
 ## Wake does nothing
 
@@ -33,4 +33,3 @@ Set volume before playback. Initial hardware validation should use silence or a 
 ## Privacy
 
 Normal integration logs omit addresses and nearby advertisement payloads. Diagnostics redact address, token, media source, title, and artist. BlueZ system logs are outside this integration and may include device identifiers.
-

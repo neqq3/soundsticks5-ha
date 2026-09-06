@@ -41,3 +41,10 @@ def test_high_risk_protocols_are_not_exposed():
 def test_default_app_url_targets_haos_host_not_core_loopback():
     source = (ROOT / "custom_components/soundsticks5/const.py").read_text(encoding="utf-8")
     assert 'DEFAULT_BACKEND_URL: Final = "http://172.30.32.1:8099"' in source
+
+
+def test_ble_coordinator_has_no_periodic_poll_or_post_command_refresh():
+    source = (ROOT / "custom_components/soundsticks5/coordinator.py").read_text(encoding="utf-8")
+    assert "update_interval=None" in source
+    assert "timedelta(seconds=30)" not in source
+    assert "await self.async_request_refresh()" not in source

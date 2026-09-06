@@ -34,6 +34,7 @@ CONF_KEEP_BLE_CONNECTED: Final = "keep_ble_connected"
 DEFAULT_BACKEND_URL: Final = "http://172.30.32.1:8099"
 DEFAULT_WAKE_BEHAVIOR: Final = "wake_release"
 DEFAULT_RELEASE_DELAY: Final = 3
+BLE_IDLE_DISCONNECT_SECONDS: Final = 10
 WAKE_BEHAVIORS: Final = ("wake_only", "wake_release", "wake_keep_connected")
 QUERY_LIGHT: Final = bytes.fromhex("aa 31 00")
 QUERY_AGGREGATE: Final = bytes.fromhex("aa 41 00")
