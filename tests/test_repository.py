@@ -19,6 +19,9 @@ def test_manifest_and_translations_are_valid():
     for path in (ROOT / "custom_components/soundsticks5").glob("**/*.json"):
         json.loads(path.read_text(encoding="utf-8"))
 
+    constants = (ROOT / "custom_components/soundsticks5/const.py").read_text(encoding="utf-8")
+    assert f'VERSION: Final = "{manifest["version"]}"' in constants
+
 
 def test_app_configuration_and_build_matrix():
     app = yaml.safe_load((ROOT / "soundsticks5_audio/config.yaml").read_text(encoding="utf-8"))

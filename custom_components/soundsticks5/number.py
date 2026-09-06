@@ -11,7 +11,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import EQ_FREQUENCIES
 from .coordinator import SoundSticksCoordinator
 from .entity import SoundSticksEntity
-from .protocol import app_eq_step_to_gain_db, build_brightness, build_color, build_eq, gain_db_to_app_eq_step
+from .protocol import build_brightness, build_color, gain_db_to_app_eq_step
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
@@ -97,14 +97,6 @@ class SoundSticksEq(SoundSticksEntity, NumberEntity):
         return None if gains is None else gain_db_to_app_eq_step(self._index, gains[self._index])
 
     async def async_set_native_value(self, value: float) -> None:
-        gains = self.coordinator.state.eq_gains_db
-        if gains is None:
+        if self.coordinator.state.eq_gains_db is None:
             raise HomeAssistantError("Current EQ snapshot is unavailable; refresh state before changing one band")
-        steps = [gain_db_to_app_eq_step(index, gain) for index, gain in enumerate(gains)]
-        steps[self._index] = round(value)
-        updated_gains = [app_eq_step_to_gain_db(index, step) for index, step in enumerate(steps)]
-        await self.coordinator.async_command(
-            build_eq(steps),
-            ack_command=0xE3,
-            state_update=lambda state: setattr(state, "eq_gains_db", updated_gains),
-        )
+        await self.coordinator.async_set_eq_band(self._index, round(value))

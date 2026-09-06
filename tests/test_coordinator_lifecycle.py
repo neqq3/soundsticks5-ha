@@ -55,3 +55,43 @@ async def test_retry_budget_is_two_attempts(monkeypatch):
     assert operation.await_count == 2
     coordinator._disconnect.assert_awaited_once_with()
     sleep.assert_awaited_once_with(1.5)
+
+
+async def test_eq_slider_coalesces_superseded_positions(monkeypatch):
+    coordinator = SoundSticksCoordinator.__new__(SoundSticksCoordinator)
+    coordinator._io_lock = asyncio.Lock()
+    coordinator._eq_revision = 0
+    coordinator._desired_eq_steps = None
+    coordinator.state = DeviceState(eq_gains_db=[0.0] * 7)
+    coordinator._write_eq_and_verify_locked = AsyncMock()
+
+    async def run_operation(operation):
+        return await operation()
+
+    coordinator._with_retries = AsyncMock(side_effect=run_operation)
+    coordinator._schedule_disconnect = Mock()
+    coordinator.async_set_updated_data = Mock()
+
+    sleep_started = asyncio.Event()
+    both_sleeping = asyncio.Event()
+    release_sleep = asyncio.Event()
+    sleep_count = 0
+
+    async def controlled_sleep(_seconds):
+        nonlocal sleep_count
+        sleep_count += 1
+        sleep_started.set()
+        if sleep_count == 2:
+            both_sleeping.set()
+        await release_sleep.wait()
+
+    monkeypatch.setattr("custom_components.soundsticks5.coordinator.asyncio.sleep", controlled_sleep)
+    first = asyncio.create_task(coordinator.async_set_eq_band(0, -2))
+    await sleep_started.wait()
+    second = asyncio.create_task(coordinator.async_set_eq_band(0, -6))
+    await both_sleeping.wait()
+    release_sleep.set()
+    await asyncio.gather(first, second)
+
+    coordinator._write_eq_and_verify_locked.assert_awaited_once()
+    assert coordinator._write_eq_and_verify_locked.await_args.args[0][0] == -6

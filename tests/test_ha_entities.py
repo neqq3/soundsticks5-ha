@@ -21,6 +21,8 @@ def coordinator(state: DeviceState):
         last_update_success=True,
         async_add_listener=lambda _listener, _context=None: lambda: None,
         async_command=AsyncMock(),
+        async_set_eq=AsyncMock(),
+        async_set_eq_band=AsyncMock(),
         async_backend_action=AsyncMock(),
         entry=SimpleNamespace(options={}),
     )
@@ -54,8 +56,7 @@ async def test_eq_entity_preserves_other_bands():
     fake = coordinator(DeviceState(eq_gains_db=[0.0] * 7))
     entity = SoundSticksEq(fake, 3, 1000)
     await entity.async_set_native_value(6)
-    frame = fake.async_command.await_args.args[0]
-    assert frame[:4].hex() == "aae36100"
+    fake.async_set_eq_band.assert_awaited_once_with(3, 6)
 
 
 def test_media_player_survives_missing_optional_backend():

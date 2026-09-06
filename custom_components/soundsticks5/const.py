@@ -6,6 +6,7 @@ from typing import Final
 
 DOMAIN: Final = "soundsticks5"
 NAME: Final = "SoundSticks 5"
+VERSION: Final = "1.0.4"
 CONTROL_SERVICE_UUID: Final = "65786365-6c70-6f69-6e74-2e636f6d0000"
 NOTIFY_UUID: Final = "65786365-6c70-6f69-6e74-2e636f6d0001"
 COMMAND_UUID: Final = "65786365-6c70-6f69-6e74-2e636f6d0002"

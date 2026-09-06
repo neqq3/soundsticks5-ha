@@ -9,7 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import CONF_RELEASE_DELAY, CONF_WAKE_BEHAVIOR, DEFAULT_RELEASE_DELAY, DEFAULT_WAKE_BEHAVIOR, THEMES
 from .coordinator import SoundSticksCoordinator
 from .entity import AudioBackendEntity, SoundSticksEntity
-from .protocol import build_color_reset, build_eq_reset
+from .protocol import build_color_reset
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
@@ -44,11 +44,7 @@ class SoundSticksEqReset(SoundSticksEntity, ButtonEntity):
         super().__init__(coordinator, "eq_reset")
 
     async def async_press(self) -> None:
-        await self.coordinator.async_command(
-            build_eq_reset(),
-            ack_command=0xE3,
-            state_update=lambda state: setattr(state, "eq_gains_db", [0.0] * 7),
-        )
+        await self.coordinator.async_set_eq([0] * 7)
 
 
 class SoundSticksWake(AudioBackendEntity, ButtonEntity):

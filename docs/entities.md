@@ -13,7 +13,9 @@ Observed defaults are 54/50/75/60/72/0 in the order above. Theme selection follo
 
 ## EQ
 
-The seven sliders match HK One's 25 positions from `-12` to `+12`, not literal dB labels. Most positions represent 0.5 dB. The 125 Hz negative half uses the App-confirmed 1.5× compensation. Every write sends the complete seven-filter snapshot. Reset sends seven zero gains, equivalent to Reset followed by the App's confirmation check mark.
+The seven sliders match HK One's 25 positions from `-12` to `+12`, not literal dB labels. Most positions represent 0.5 dB. The 125 Hz negative half uses the App-confirmed 1.5× compensation. Every write sends the complete seven-filter snapshot. Reset sends seven zero gains directly.
+
+Slider updates are coalesced with a 300 ms trailing debounce so superseded positions are not replayed over a remote Bluetooth proxy. Since captured `0xe3` writes do not provide a dependable application ACK, the integration explicitly queries `e1` after writing and accepts the change only when the returned `e2` snapshot matches.
 
 ## Media
 

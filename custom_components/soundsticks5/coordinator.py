@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from bleak import BleakClient, BleakError
@@ -38,7 +38,15 @@ from .const import (
     QUERY_LIGHT,
 )
 from .discovery import matches_soundsticks5_advertisement
-from .protocol import DeviceState, Frame, ProtocolError, apply_notification
+from .protocol import (
+    DeviceState,
+    Frame,
+    ProtocolError,
+    app_eq_step_to_gain_db,
+    apply_notification,
+    build_eq,
+    gain_db_to_app_eq_step,
+)
 
 _LOGGER = logging.getLogger(__name__)
 WaitPredicate = Callable[[Frame], bool]
@@ -66,6 +74,8 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
         self._backend_task: asyncio.Task[None] | None = None
         self._io_lock = asyncio.Lock()
         self._waiters: list[tuple[WaitPredicate, asyncio.Future[Frame]]] = []
+        self._eq_revision = 0
+        self._desired_eq_steps: list[int] | None = None
         self.backend_status: dict[str, Any] = {"available": False, "audio_connected": False, "playing": False}
         options = entry.options
         self.backend_enabled = options.get(CONF_ENABLE_AUDIO, True)
@@ -345,6 +355,69 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
         # Matching notifications have already updated the cache. Avoid the
         # former five-query refresh and its extra reconnect after every write.
         self.async_set_updated_data(self.state)
+
+    async def _write_eq_and_verify_locked(self, steps: tuple[int, ...]) -> None:
+        """Write one full EQ snapshot, then verify it with an explicit query."""
+        client = await self._ensure_connected()
+        await client.write_gatt_char(COMMAND_UUID, build_eq(steps), response=False)
+
+        # Real HK One captures do not show an application ACK for 0xe3.  The
+        # query response is the authoritative confirmation instead.
+        await self._query_locked(QUERY_EQ, 0xE2)
+        actual = self.state.eq_gains_db
+        expected = [app_eq_step_to_gain_db(index, step) for index, step in enumerate(steps)]
+        if actual is None or len(actual) != 7 or any(abs(left - right) > 0.02 for left, right in zip(actual, expected, strict=True)):
+            raise UpdateFailed("EQ readback did not match the requested snapshot")
+
+    async def async_set_eq(self, steps: Sequence[int]) -> None:
+        """Set all EQ bands, coalescing superseded slider positions."""
+        requested = [round(value) for value in steps]
+        # Validate the count and App-scale bounds before changing pending state.
+        build_eq(requested)
+        self._desired_eq_steps = requested
+        self._eq_revision += 1
+        revision = self._eq_revision
+
+        # HK One limits drag traffic to roughly one update per 300 ms and
+        # always sends the final position.  A short trailing debounce is more
+        # suitable for HA service calls over a remote Bluetooth proxy.
+        await asyncio.sleep(0.3)
+        if revision != self._eq_revision:
+            return
+
+        try:
+            async with self._io_lock:
+                if revision != self._eq_revision:
+                    return
+                target = tuple(self._desired_eq_steps or requested)
+                try:
+                    await self._with_retries(lambda: self._write_eq_and_verify_locked(target))
+                finally:
+                    self._schedule_disconnect()
+        except Exception:
+            if revision == self._eq_revision:
+                self._desired_eq_steps = None
+            raise
+
+        if revision == self._eq_revision:
+            self._desired_eq_steps = None
+            # The e2 response has already populated the authoritative gains.
+            self.async_set_updated_data(self.state)
+
+    async def async_set_eq_band(self, index: int, step: int) -> None:
+        """Update one App-scale band while preserving the latest pending set."""
+        if not 0 <= index < 7:
+            raise ValueError("EQ band index is outside 0..6")
+        desired = self._desired_eq_steps
+        if desired is None:
+            gains = self.state.eq_gains_db
+            if gains is None:
+                raise UpdateFailed("current EQ snapshot is unavailable")
+            desired = [gain_db_to_app_eq_step(band, gain) for band, gain in enumerate(gains)]
+        else:
+            desired = list(desired)
+        desired[index] = round(step)
+        await self.async_set_eq(desired)
 
     async def async_backend_action(self, action: str, **payload: Any) -> dict[str, Any]:
         if not self.backend_enabled:

@@ -3,12 +3,14 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from .const import VERSION
+
 
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry):
     coordinator = entry.runtime_data
     state = coordinator.state
     return {
-        "integration_version": "1.0.0",
+        "integration_version": VERSION,
         "options": {
             key: ("REDACTED" if "token" in key else value)
             for key, value in entry.options.items()
