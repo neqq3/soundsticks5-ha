@@ -42,7 +42,7 @@
       "speed": {"name": "Lighting speed", "state": {"low": "Low", "medium": "Medium", "high": "High"}},
       "auto_off": {"name": "Auto-off", "state": {"never": "Never", "10_minutes": "10 minutes", "1_hour": "1 hour", "2_hours": "2 hours", "4_hours": "4 hours"}}
     },
-    "number": {"color_parameter": {"name": "Current theme color"}},
+    "number": {"brightness": {"name": "Lighting brightness"}, "color_parameter": {"name": "Current theme color"}},
     "switch": {"feedback_tone": {"name": "Feedback tone"}},
     "button": {
       "color_reset": {"name": "Reset current theme color"},

@@ -7,7 +7,7 @@
   "issue_tracker": "https://github.com/neqq3/soundsticks5-ha/issues",
   "iot_class": "local_push",
   "integration_type": "device",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "requirements": [],
   "dependencies": ["bluetooth"],
   "after_dependencies": ["bluetooth"],

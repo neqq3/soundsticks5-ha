@@ -11,12 +11,43 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import EQ_FREQUENCIES
 from .coordinator import SoundSticksCoordinator
 from .entity import SoundSticksEntity
-from .protocol import build_color, build_eq, gain_db_to_app_eq_step
+from .protocol import app_eq_step_to_gain_db, build_brightness, build_color, build_eq, gain_db_to_app_eq_step
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
-    async_add_entities([SoundSticksColor(coordinator), *(SoundSticksEq(coordinator, index, frequency) for index, frequency in enumerate(EQ_FREQUENCIES))])
+    async_add_entities(
+        [
+            SoundSticksBrightness(coordinator),
+            SoundSticksColor(coordinator),
+            *(SoundSticksEq(coordinator, index, frequency) for index, frequency in enumerate(EQ_FREQUENCIES)),
+        ]
+    )
+
+
+class SoundSticksBrightness(SoundSticksEntity, NumberEntity):
+    _attr_translation_key = "brightness"
+    _attr_native_min_value = 0
+    _attr_native_max_value = 100
+    _attr_native_step = 1
+    _attr_mode = NumberMode.SLIDER
+    _attr_native_unit_of_measurement = "%"
+    _attr_icon = "mdi:brightness-6"
+
+    def __init__(self, coordinator: SoundSticksCoordinator) -> None:
+        super().__init__(coordinator, "brightness")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.state.brightness
+
+    async def async_set_native_value(self, value: float) -> None:
+        requested = round(value)
+        await self.coordinator.async_command(
+            build_brightness(requested),
+            ack_command=0x33,
+            state_update=lambda state: setattr(state, "brightness", requested),
+        )
 
 
 class SoundSticksColor(SoundSticksEntity, NumberEntity):
@@ -38,7 +69,12 @@ class SoundSticksColor(SoundSticksEntity, NumberEntity):
         theme_id = self.coordinator.state.theme_id
         if theme_id is None:
             raise HomeAssistantError("Current lighting theme is unavailable; refresh state before setting color")
-        await self.coordinator.async_command(build_color(theme_id, round(value)), ack_command=0x33)
+        requested = round(value)
+        await self.coordinator.async_command(
+            build_color(theme_id, requested),
+            ack_command=0x33,
+            state_update=lambda state: state.colors.__setitem__(theme_id, requested),
+        )
 
 
 class SoundSticksEq(SoundSticksEntity, NumberEntity):
@@ -66,4 +102,9 @@ class SoundSticksEq(SoundSticksEntity, NumberEntity):
             raise HomeAssistantError("Current EQ snapshot is unavailable; refresh state before changing one band")
         steps = [gain_db_to_app_eq_step(index, gain) for index, gain in enumerate(gains)]
         steps[self._index] = round(value)
-        await self.coordinator.async_command(build_eq(steps), ack_command=0xE3)
+        updated_gains = [app_eq_step_to_gain_db(index, step) for index, step in enumerate(steps)]
+        await self.coordinator.async_command(
+            build_eq(steps),
+            ack_command=0xE3,
+            state_update=lambda state: setattr(state, "eq_gains_db", updated_gains),
+        )

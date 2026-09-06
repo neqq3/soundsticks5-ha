@@ -42,6 +42,7 @@ from .protocol import DeviceState, Frame, ProtocolError, apply_notification
 
 _LOGGER = logging.getLogger(__name__)
 WaitPredicate = Callable[[Frame], bool]
+StateUpdater = Callable[[DeviceState], None]
 
 
 class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
@@ -317,6 +318,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
         *,
         ack_command: int | None = None,
         response_command: int | None = None,
+        state_update: StateUpdater | None = None,
     ) -> None:
         """Send an allow-listed command and require device confirmation."""
         if ack_command is None and response_command is None:
@@ -338,6 +340,8 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
                 await self._with_retries(lambda: self._write_wait(payload, predicate))
             finally:
                 self._schedule_disconnect()
+        if state_update is not None:
+            state_update(self.state)
         # Matching notifications have already updated the cache. Avoid the
         # former five-query refresh and its extra reconnect after every write.
         self.async_set_updated_data(self.state)

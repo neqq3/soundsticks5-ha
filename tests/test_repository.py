@@ -48,3 +48,17 @@ def test_ble_coordinator_has_no_periodic_poll_or_post_command_refresh():
     assert "update_interval=None" in source
     assert "timedelta(seconds=30)" not in source
     assert "await self.async_request_refresh()" not in source
+
+
+def test_chinese_theme_names_match_hk_one():
+    translations = json.loads(
+        (ROOT / "custom_components/soundsticks5/translations/zh-Hans.json").read_text(encoding="utf-8")
+    )
+    assert translations["entity"]["select"]["theme"]["state"] == {
+        "ocean": "碧波荡漾",
+        "aurora": "极光幻境",
+        "blossom": "落英缤纷",
+        "sunrise": "旭日东升",
+        "fireplace": "雪夜炉火",
+        "static": "静谧时光",
+    }

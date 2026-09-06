@@ -36,9 +36,22 @@ class SoundSticksLight(SoundSticksEntity, LightEntity):
     async def async_turn_on(self, **kwargs) -> None:
         if ATTR_BRIGHTNESS in kwargs:
             value = round(int(kwargs[ATTR_BRIGHTNESS]) * 100 / 255)
-            await self.coordinator.async_command(build_brightness(value), ack_command=0x33)
-        if self.is_on is not True:
-            await self.coordinator.async_command(build_light_power(True), ack_command=0x33)
+            await self.coordinator.async_command(
+                build_brightness(value),
+                ack_command=0x33,
+                state_update=lambda state: setattr(state, "brightness", value),
+            )
+        # Always send the idempotent power command. Notifications are not
+        # guaranteed after every ACK, so a cached True must not suppress ON.
+        await self.coordinator.async_command(
+            build_light_power(True),
+            ack_command=0x33,
+            state_update=lambda state: setattr(state, "light_power", True),
+        )
 
     async def async_turn_off(self, **kwargs) -> None:
-        await self.coordinator.async_command(build_light_power(False), ack_command=0x33)
+        await self.coordinator.async_command(
+            build_light_power(False),
+            ack_command=0x33,
+            state_update=lambda state: setattr(state, "light_power", False),
+        )

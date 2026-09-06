@@ -7,7 +7,7 @@ pytest.importorskip("homeassistant")
 
 from custom_components.soundsticks5.light import SoundSticksLight
 from custom_components.soundsticks5.media_player import SoundSticksMediaPlayer
-from custom_components.soundsticks5.number import SoundSticksEq
+from custom_components.soundsticks5.number import SoundSticksBrightness, SoundSticksEq
 from custom_components.soundsticks5.protocol import DeviceState
 
 
@@ -35,6 +35,21 @@ async def test_light_uses_two_confirmed_commands_when_brightness_and_power_chang
     assert fake.async_command.await_args_list[1].args[0].hex() == "aa330400990101"
 
 
+async def test_light_always_sends_on_even_when_cached_state_is_stale():
+    fake = coordinator(DeviceState(light_power=True, brightness=20))
+    entity = SoundSticksLight(fake)
+    await entity.async_turn_on()
+    assert fake.async_command.await_count == 1
+    assert fake.async_command.await_args.args[0].hex() == "aa330400990101"
+
+
+async def test_dedicated_brightness_uses_app_percent_scale():
+    fake = coordinator(DeviceState(light_power=True, brightness=20))
+    entity = SoundSticksBrightness(fake)
+    await entity.async_set_native_value(73)
+    assert fake.async_command.await_args.args[0].hex() == "aa330400450149"
+
+
 async def test_eq_entity_preserves_other_bands():
     fake = coordinator(DeviceState(eq_gains_db=[0.0] * 7))
     entity = SoundSticksEq(fake, 3, 1000)
@@ -48,4 +63,3 @@ def test_media_player_survives_missing_optional_backend():
     entity = SoundSticksMediaPlayer(fake)
     assert entity.available is True
     assert entity.volume_level == 0.37
-

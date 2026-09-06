@@ -30,9 +30,14 @@ async def test_command_uses_notification_cache_without_full_refresh():
     coordinator.async_request_refresh = AsyncMock()
     coordinator.state = DeviceState()
 
-    await coordinator.async_command(b"request", ack_command=0x33)
+    await coordinator.async_command(
+        b"request",
+        ack_command=0x33,
+        state_update=lambda state: setattr(state, "light_power", False),
+    )
 
     coordinator._schedule_disconnect.assert_called_once_with()
+    assert coordinator.state.light_power is False
     coordinator.async_set_updated_data.assert_called_once_with(coordinator.state)
     coordinator.async_request_refresh.assert_not_awaited()
 

@@ -26,8 +26,15 @@ class SoundSticksFeedbackTone(SoundSticksEntity, SwitchEntity):
         return self.coordinator.state.feedback_tone
 
     async def async_turn_on(self, **kwargs) -> None:
-        await self.coordinator.async_command(build_feedback_tone(True), response_command=0xF2)
+        await self.coordinator.async_command(
+            build_feedback_tone(True),
+            response_command=0xF2,
+            state_update=lambda state: setattr(state, "feedback_tone", True),
+        )
 
     async def async_turn_off(self, **kwargs) -> None:
-        await self.coordinator.async_command(build_feedback_tone(False), response_command=0xF2)
-
+        await self.coordinator.async_command(
+            build_feedback_tone(False),
+            response_command=0xF2,
+            state_update=lambda state: setattr(state, "feedback_tone", False),
+        )

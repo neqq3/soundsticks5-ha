@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_RELEASE_DELAY, CONF_WAKE_BEHAVIOR, DEFAULT_RELEASE_DELAY, DEFAULT_WAKE_BEHAVIOR
+from .const import CONF_RELEASE_DELAY, CONF_WAKE_BEHAVIOR, DEFAULT_RELEASE_DELAY, DEFAULT_WAKE_BEHAVIOR, THEMES
 from .coordinator import SoundSticksCoordinator
 from .entity import AudioBackendEntity, SoundSticksEntity
 from .protocol import build_color_reset, build_eq_reset
@@ -28,7 +28,12 @@ class SoundSticksColorReset(SoundSticksEntity, ButtonEntity):
         theme_id = self.coordinator.state.theme_id
         if theme_id is None:
             raise HomeAssistantError("Current lighting theme is unavailable; refresh state before resetting color")
-        await self.coordinator.async_command(build_color_reset(theme_id), ack_command=0x33)
+        default_color = next(color for candidate, color in THEMES.values() if candidate == theme_id)
+        await self.coordinator.async_command(
+            build_color_reset(theme_id),
+            ack_command=0x33,
+            state_update=lambda state: state.colors.__setitem__(theme_id, default_color),
+        )
 
 
 class SoundSticksEqReset(SoundSticksEntity, ButtonEntity):
@@ -39,7 +44,11 @@ class SoundSticksEqReset(SoundSticksEntity, ButtonEntity):
         super().__init__(coordinator, "eq_reset")
 
     async def async_press(self) -> None:
-        await self.coordinator.async_command(build_eq_reset(), ack_command=0xE3)
+        await self.coordinator.async_command(
+            build_eq_reset(),
+            ack_command=0xE3,
+            state_update=lambda state: setattr(state, "eq_gains_db", [0.0] * 7),
+        )
 
 
 class SoundSticksWake(AudioBackendEntity, ButtonEntity):

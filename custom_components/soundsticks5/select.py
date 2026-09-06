@@ -30,7 +30,13 @@ class SoundSticksTheme(SoundSticksEntity, SelectEntity):
         return THEME_BY_ID.get(self.coordinator.state.theme_id)
 
     async def async_select_option(self, option: str) -> None:
-        await self.coordinator.async_command(build_theme(option), ack_command=0x33)
+        theme_id, default_color = THEMES[option]
+
+        def update_state(state) -> None:
+            state.theme_id = theme_id
+            state.colors[theme_id] = default_color
+
+        await self.coordinator.async_command(build_theme(option), ack_command=0x33, state_update=update_state)
 
 
 class SoundSticksSpeed(SoundSticksEntity, SelectEntity):
@@ -45,7 +51,11 @@ class SoundSticksSpeed(SoundSticksEntity, SelectEntity):
         return SPEED_BY_ID.get(self.coordinator.state.speed)
 
     async def async_select_option(self, option: str) -> None:
-        await self.coordinator.async_command(build_speed(option), ack_command=0x33)
+        await self.coordinator.async_command(
+            build_speed(option),
+            ack_command=0x33,
+            state_update=lambda state: setattr(state, "speed", SPEEDS[option]),
+        )
 
 
 class SoundSticksAutoOff(SoundSticksEntity, SelectEntity):
@@ -60,4 +70,8 @@ class SoundSticksAutoOff(SoundSticksEntity, SelectEntity):
         return AUTO_OFF_BY_SECONDS.get(self.coordinator.state.auto_off_configured)
 
     async def async_select_option(self, option: str) -> None:
-        await self.coordinator.async_command(build_auto_off(option), ack_command=0xBA)
+        await self.coordinator.async_command(
+            build_auto_off(option),
+            ack_command=0xBA,
+            state_update=lambda state: setattr(state, "auto_off_configured", AUTO_OFF_SECONDS[option]),
+        )

@@ -38,11 +38,11 @@
   "entity": {
     "light": {"lighting": {"name": "灯光"}},
     "select": {
-      "theme": {"name": "灯效主题", "state": {"ocean": "海洋", "aurora": "极光", "blossom": "花开", "sunrise": "日出", "fireplace": "暖炉", "static": "静态"}},
+      "theme": {"name": "灯效主题", "state": {"ocean": "碧波荡漾", "aurora": "极光幻境", "blossom": "落英缤纷", "sunrise": "旭日东升", "fireplace": "雪夜炉火", "static": "静谧时光"}},
       "speed": {"name": "灯效速度", "state": {"low": "低", "medium": "中", "high": "高"}},
       "auto_off": {"name": "自动关闭", "state": {"never": "从不", "10_minutes": "10 分钟", "1_hour": "1 小时", "2_hours": "2 小时", "4_hours": "4 小时"}}
     },
-    "number": {"color_parameter": {"name": "当前主题颜色"}},
+    "number": {"brightness": {"name": "灯光亮度"}, "color_parameter": {"name": "当前主题颜色"}},
     "switch": {"feedback_tone": {"name": "反馈音"}},
     "button": {
       "color_reset": {"name": "重置当前主题颜色"},
