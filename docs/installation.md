@@ -1,5 +1,7 @@
 # Installation
 
+For an end-to-end walkthrough including the Lovelace card, see [第一次使用](getting-started.md).
+
 ## BLE integration
 
 ### HACS

@@ -21,6 +21,8 @@ Harman Kardon SoundSticks 5 的非官方 Home Assistant 本地 BLE/GATT 控制�
 
 ## 安装
 
+**第一次使用请看：[从安装集成到配置 Lovelace 卡片](docs/getting-started.md)**，包含默认配置、播放源选择、预设和常见问题。
+
 详细步骤见 [安装文档](docs/installation.md)。最简流程：
 
 1. 用 HACS 自定义仓库安装，或把 `custom_components/soundsticks5` 复制到 `/config/custom_components/`。

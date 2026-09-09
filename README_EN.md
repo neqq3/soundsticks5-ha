@@ -20,6 +20,8 @@ Lighting is not speaker power. A successful BLE media ACK also does not prove th
 
 ## Installation
 
+See the [first-use guide (Chinese)](docs/getting-started.md) for integration installation, Lovelace setup, default behavior, playback sources, presets, and troubleshooting.
+
 See [Installation](docs/installation.md). In short:
 
 1. Install this repository as a HACS custom repository, or copy `custom_components/soundsticks5` to `/config/custom_components/`.

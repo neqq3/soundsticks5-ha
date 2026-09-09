@@ -4,6 +4,8 @@
 
 ## 安装
 
+新用户建议先阅读[完整入门指南](../docs/getting-started.md)，包含 HACS 安装、卡片资源注册、默认播放方式和故障排查。
+
 1. 在 HA 安装并配置 `neqq3/soundsticks5-ha` 集成。
 2. 将 `soundsticks5-lovelace.js` 放入 HA 的 `/config/www/`，将 `assets/soundsticks5.png` 放入 `/config/www/soundsticks5.png`。
 3. 在仪表板资源中添加 `/local/soundsticks5-lovelace.js`，类型选择 JavaScript 模块。更新脚本时更换 URL 的版本查询参数，并刷新浏览器。
