@@ -5,8 +5,13 @@ const path=require('node:path');
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.md':'text/plain; charset=utf-8','.svg':'image/svg+xml','.png':'image/png'};
 http.createServer((req,res)=>{
   const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
-  const file=path.resolve(__dirname,'.'+(pathname==='/'?'/preview.html':pathname));
-  if(!file.startsWith(__dirname+path.sep)){res.writeHead(403);res.end();return;}
+  const bundled={
+    '/soundsticks5/frontend/soundsticks5-lovelace.js':'soundsticks5-lovelace.js',
+    '/soundsticks5/frontend/soundsticks5.png':'soundsticks5.png',
+  };
+  const assetRoot=path.resolve(__dirname,'../custom_components/soundsticks5/frontend');
+  const file=bundled[pathname]?path.join(assetRoot,bundled[pathname]):path.resolve(__dirname,'.'+(pathname==='/'?'/preview.html':pathname));
+  if(!bundled[pathname]&&!file.startsWith(__dirname+path.sep)){res.writeHead(403);res.end();return;}
   fs.readFile(file,(error,data)=>{
     if(error){res.writeHead(404);res.end('Not found');return;}
     res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(data);

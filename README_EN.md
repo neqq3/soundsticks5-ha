@@ -34,7 +34,7 @@ See [Entities and mappings](docs/entities.md) for complete behavior and scale ma
 
 ## Custom card
 
-The repository includes a standalone [SoundSticks 5 Lovelace card](soundsticks5-card/README.md) with lighting, volume, EQ, presets, and selectable playback sources. Follow its instructions to install the static files separately; installing or updating the integration through HACS does not register this card automatically.
+The repository includes a bundled [SoundSticks 5 Lovelace card](soundsticks5-card/README.md) with lighting, volume, EQ, presets, and selectable playback sources. The card and image ship with the integration. In storage resource mode the integration registers and updates the card resource automatically; refresh your browser and add the card to a dashboard. For YAML resources, follow the getting-started guide.
 
 ## Safety and status
 

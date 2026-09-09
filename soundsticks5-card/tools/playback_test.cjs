@@ -3,7 +3,7 @@ const classes = new Map();
 global.HTMLElement = class { attachShadow() { return this.shadowRoot = {innerHTML:'',querySelectorAll:()=>[],querySelector:()=>null}; } };
 global.customElements = {get:n=>classes.get(n),define:(n,c)=>classes.set(n,c)};
 global.window = {customCards:[]};
-require('../soundsticks5-lovelace.js');
+require('../../custom_components/soundsticks5/frontend/soundsticks5-lovelace.js');
 const Card = classes.get('soundsticks5-lovelace-card');
 const c = new Card();
 const ble='media_player.ble', ma='media_player.ma';

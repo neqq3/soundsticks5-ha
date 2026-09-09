@@ -8,10 +8,12 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import SoundSticksCoordinator
+from .frontend import async_setup_frontend
 
 
 async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
-    """Register integration services."""
+    """Register the bundled card and integration services."""
+    await async_setup_frontend(hass)
 
     def _coordinator() -> SoundSticksCoordinator:
         entries = [

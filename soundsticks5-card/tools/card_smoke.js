@@ -12,7 +12,7 @@ global.window = { customCards: [], setTimeout: () => 0, clearTimeout: () => {} }
 const realError = console.error;
 global.console.error = (...a) => { realError("[卡片内部错误]", ...a); };
 
-require("../soundsticks5-lovelace.js");
+require("../../custom_components/soundsticks5/frontend/soundsticks5-lovelace.js");
 
 const IDS = {
   media_player: "media_player.soundsticks_5_media",

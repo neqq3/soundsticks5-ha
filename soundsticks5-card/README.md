@@ -1,19 +1,20 @@
 # SoundSticks 5 自定义卡片
 
-基于 Kimi 视觉稿迭代的 Home Assistant Lovelace 卡片。独立于 SoundSticks 5 集成，保留声音、灯光、EQ、设备设置及预设控制。
+基于 Kimi 视觉稿迭代的 Home Assistant Lovelace 卡片。随 SoundSticks 5 集成打包，保留声音、灯光、EQ、设备设置及预设控制。
 
 ## 安装
 
 新用户建议先阅读[完整入门指南](../docs/getting-started.md)，包含 HACS 安装、卡片资源注册、默认播放方式和故障排查。
 
 1. 在 HA 安装并配置 `neqq3/soundsticks5-ha` 集成。
-2. 将 `soundsticks5-lovelace.js` 放入 HA 的 `/config/www/`，将 `assets/soundsticks5.png` 放入 `/config/www/soundsticks5.png`。
-3. 在仪表板资源中添加 `/local/soundsticks5-lovelace.js`，类型选择 JavaScript 模块。更新脚本时更换 URL 的版本查询参数，并刷新浏览器。
-4. 添加自定义卡片：
+2. 重启 HA 并配置集成后，卡片资源自动注册；刷新浏览器。
+3. 在仪表板中添加 SoundSticks 5 自定义卡片：
 
 ```yaml
 type: custom:soundsticks5-lovelace-card
 ```
+
+YAML 管理资源以及旧版迁移步骤见[入门指南](../docs/getting-started.md)。发布用 JS 和图片的唯一来源为 `custom_components/soundsticks5/frontend/`；本目录保留预览与测试工具。
 
 卡片自动发现 SoundSticks 实体。图形编辑器支持自动、指定媒体实体、仅 BLE 三种播放方式，详见 [PLAYBACK.md](PLAYBACK.md)。可通过 `image` 配置覆盖产品图片路径。
 

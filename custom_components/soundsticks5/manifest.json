@@ -10,7 +10,7 @@
   "version": "1.2.0",
   "requirements": [],
   "dependencies": ["bluetooth", "http"],
-  "after_dependencies": ["bluetooth"],
+  "after_dependencies": ["bluetooth", "lovelace"],
   "bluetooth": [
     {"service_uuid": "65786365-6c70-6f69-6e74-2e636f6d0000", "connectable": true},
     {"service_uuid": "0000fddf-0000-1000-8000-00805f9b34fb", "local_name": "SoundSticks 5*", "connectable": true}

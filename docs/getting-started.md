@@ -1,6 +1,6 @@
 # 第一次使用：集成与 Lovelace 卡片
 
-本指南针对普通版 Harman Kardon SoundSticks 5。集成负责控制音箱；Lovelace 卡片负责仪表板界面。两者分开安装。
+本指南针对普通版 Harman Kardon SoundSticks 5。集成负责控制音箱；Lovelace 卡片负责仪表板界面。卡片随集成一起安装和更新。
 
 ## 1. 准备 Home Assistant 和音箱
 
@@ -25,19 +25,7 @@ https://github.com/neqq3/soundsticks5-ha
 
 ## 3. 安装自定义卡片
 
-**HACS 安装上述集成不会自动安装或注册本卡片。** 从同一版本的仓库下载以下两个文件，使用文件编辑器、Samba 等方式复制：
-
-| 仓库文件 | HA 中的位置 |
-|---|---|
-| [`soundsticks5-card/soundsticks5-lovelace.js`](../soundsticks5-card/soundsticks5-lovelace.js) | `/config/www/soundsticks5-lovelace.js` |
-| [`soundsticks5-card/assets/soundsticks5.png`](../soundsticks5-card/assets/soundsticks5.png) | `/config/www/soundsticks5.png` |
-
-若没有 `www` 文件夹，先创建它。下载的是文件原始内容，不要保存 GitHub 网页 HTML。其他 App 参考图片、本地预览服务器及开发工具不需要复制到 HA。
-
-打开“设置 → 仪表盘 → 资源”（入口可能在右上角菜单；若看不到，检查个人资料中的高级模式），添加：
-
-- 网址：`/local/soundsticks5-lovelace.js?v=1`
-- 类型：**JavaScript 模块**
+安装并配置集成后，卡片 JS 和图片已经包含在集成目录内，无需复制到 `www`。通常使用的界面管理资源模式下，集成会自动注册卡片，并在升级后更新资源版本。
 
 刷新浏览器。进入要放置卡片的仪表板，点击编辑、添加卡片，选择“自定义：SoundSticks 5 (HK design)”。也可以使用手动卡片，填入：
 
@@ -48,6 +36,23 @@ type: custom:soundsticks5-lovelace-card
 设备详情页不会因为安装卡片而被替换，也不会自动创建专用仪表板。
 
 如果希望打开 HA 就看到这张卡片，可以创建一个自己的仪表板并添加卡片，再在个人资料的仪表板选项中设为个人默认页；管理员也可以在“设置 → 仪表盘”中设置默认仪表板。参见 [HA 官方仪表板说明](https://www.home-assistant.io/dashboards/dashboards/#setting-a-default-dashboard)。
+
+### 从旧版手动安装迁移
+
+旧资源 `/local/soundsticks5-lovelace.js`（包括版本查询参数）会自动迁移到内置地址，并合并该卡片的重复资源；已有卡片配置保持有效。确认新卡片正常后，可自行删除旧的 `www/soundsticks5-lovelace.js`。旧图片若仍被自定义 `image` 配置引用，应保留。
+
+### 使用 YAML 管理资源
+
+集成不会改写你的 YAML 文件。在现有 `lovelace.resources` 列表中添加以下条目；若有旧版资源，替换它：
+
+```yaml
+lovelace:
+  resources:
+    - url: /soundsticks5/frontend/soundsticks5-lovelace.js
+      type: module
+```
+
+重新加载资源并刷新浏览器。这个无版本地址不设置长期 HTTP 缓存。若自动注册失败，也可以在界面的资源页手动添加同一地址，类型为 JavaScript 模块。
 
 ## 4. 选择播放方式
 
@@ -108,9 +113,9 @@ data:
 
 | 现象 | 检查方法 |
 |---|---|
-| 自定义元素不存在 | 确认 JS 文件位置、资源类型为 JavaScript 模块，且卡片类型没有拼错 |
-| 卡片图片不显示 | 确认 `/config/www/soundsticks5.png` 存在；浏览器访问 HA 的 `/local/soundsticks5.png` 应能打开图片 |
-| 更新后仍是旧界面 | 替换 JS 后将资源地址的 `?v=1` 改成 `?v=2` 等新值，再刷新浏览器；编辑现有资源，不重复添加 |
+| 自定义元素不存在 | 确认集成已加载，刷新浏览器；检查资源列表或日志，必要时按上面的地址手动注册 |
+| 卡片图片不显示 | 确认集成的 `frontend` 目录完整；访问 HA 的 `/soundsticks5/frontend/soundsticks5.png` 应能打开图片 |
+| 更新后仍是旧界面 | 更新集成并重启 HA，再刷新浏览器；界面管理的资源版本会自动更新，无需重复添加 |
 | 有声音但没有歌名 | 查看媒体实体的 `media_title`、`media_artist`；若正确数据在另一个播放器，配置“指定媒体实体” |
 | 播放按钮禁用 | 检查指定播放器是否可用、是否声明支持该操作 |
 | 灯光或音量无法控制 | 检查音箱是否唤醒、BLE 距离、适配器或代理是否能建立连接；必要时关闭占用连接的 App 后刷新状态 |

@@ -33,7 +33,7 @@ Harman Kardon SoundSticks 5 的非官方 Home Assistant 本地 BLE/GATT 控制�
 
 ## 自定义卡片
 
-本仓库提供独立的 [SoundSticks 5 自定义卡片](soundsticks5-card/README.md)，包含灯效、音量、EQ、预设和播放源选择。支持指定媒体实体、自动或仅 BLE 模式。卡片需按说明单独安装静态文件，HACS 集成更新不会自动注册该卡片。
+本仓库提供随集成安装的 [SoundSticks 5 自定义卡片](soundsticks5-card/README.md)，包含灯效、音量、EQ、预设和播放源选择。支持指定媒体实体、自动或仅 BLE 模式。卡片和图片随集成一起安装和更新，界面管理资源时自动注册，刷新浏览器后即可添加卡片。YAML 资源配置见入门指南。
 
 ## 实体
 

@@ -194,7 +194,7 @@ class SoundSticks5LovelaceCard extends HTMLElement {
   }
 
   _productImg(ledColor, lightOn) {
-    const src = this._config.image || "/local/soundsticks5.png?source=app-original";
+    const src = this._config.image || "/soundsticks5/frontend/soundsticks5.png";
     return `<div class="product-wrap">
       <img class="product" src="${this._escape(src)}" alt="SoundSticks 5" draggable="false"
            onerror="this.style.display='none';this.parentElement.classList.add('no-img')">

@@ -33,7 +33,7 @@
 <div class="frame"><soundsticks5-lovelace-card id="card"></soundsticks5-lovelace-card></div>
 
 <!-- 先加载卡片定义，再做模拟初始化（否则 custom element 未注册，setConfig 不存在） -->
-<script src="./soundsticks5-lovelace.js"></script>
+<script src="/soundsticks5/frontend/soundsticks5-lovelace.js"></script>
 <script>
 /* ---- 简易 ha-icon（预览用，HA 内由前端提供真实 MDI） ---- */
 const MDI = {
@@ -132,7 +132,7 @@ const hass = {
 
 const previewWidth = Number(new URLSearchParams(location.search).get("width"));
 if (previewWidth >= 320 && previewWidth <= 960) document.querySelector(".frame").style.maxWidth = `${previewWidth}px`;
-card.setConfig({ image: "./assets/soundsticks5.png?source=app-original" });
+card.setConfig({ image: "/soundsticks5/frontend/soundsticks5.png" });
 update();
 
 /* 主题演示切换 */
