@@ -30,6 +30,10 @@ The integration requires a connectable Home Assistant Bluetooth adapter or proxy
 
 See [Entities and mappings](docs/entities.md) for complete behavior and scale mappings.
 
+## Custom card
+
+The repository includes a standalone [SoundSticks 5 Lovelace card](soundsticks5-card/README.md) with lighting, volume, EQ, presets, and selectable playback sources. Follow its instructions to install the static files separately; installing or updating the integration through HACS does not register this card automatically.
+
 ## Safety and status
 
 There is no arbitrary GATT write surface. OTA, firmware transfer, factory reset, unbinding, and unknown commands are intentionally absent. Diagnostics redact addresses, title, and artist.

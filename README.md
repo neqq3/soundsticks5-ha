@@ -29,6 +29,10 @@ Harman Kardon SoundSticks 5 的非官方 Home Assistant 本地 BLE/GATT 控制�
 
 普通用户只需要一个由 HA 主机管理的蓝牙适配器。BLE 与经典蓝牙是两个独立协议层，但设计上允许共用同一个物理适配器。实际并发能力仍取决于适配器、BlueZ、代理类型和音箱状态。
 
+## 自定义卡片
+
+本仓库提供独立的 [SoundSticks 5 自定义卡片](soundsticks5-card/README.md)，包含灯效、音量、EQ、预设和播放源选择。支持指定媒体实体、自动或仅 BLE 模式。卡片需按说明单独安装静态文件，HACS 集成更新不会自动注册该卡片。
+
 ## 实体
 
 | 分组 | 实体 |

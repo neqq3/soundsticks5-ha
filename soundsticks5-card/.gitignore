@@ -1,0 +1,7 @@
+# 本机部署与迁移资料
+/tools/*.py
+/DEPLOYMENT.md
+/migration-manifest.json
+# 本机参考图片；运行仅需要 soundsticks5.png
+/assets/official-*.png
+/assets/themes/

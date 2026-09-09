@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SoundSticks 5 · Lovelace 卡片预览</title>
+<style>
+  html,body{margin:0;padding:0}
+  body{
+    background:#e5e6e9; min-height:100vh; padding:34px 16px 60px;
+    font-family:"SF Pro Display","Segoe UI",Roboto,"PingFang SC","Noto Sans SC",system-ui,sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  ha-card{display:block}
+  .frame{width:100%; max-width:480px}
+  .cap{max-width:480px; margin:0 6px 18px; color:#8a8b8f; font-size:12px; letter-spacing:.06em}
+  .cap b{color:#3c3d41; font-weight:600}
+  .switcher{max-width:480px; width:100%; margin:0 6px 16px; display:flex; flex-wrap:wrap; gap:8px; font-size:12px}
+  .switcher button{border:1px solid #d6d7db; background:#fff; border-radius:99px; padding:6px 14px; cursor:pointer; color:#55565a}
+  .switcher button.on{background:#2a2b2e; color:#fff; border-color:#2a2b2e}
+</style>
+</head>
+<body>
+<div class="cap"><b>预览</b> · 数据为模拟值，交互可点（播放 / 主题 / 滑块 / 开关）</div>
+<div class="switcher">
+  <span style="align-self:center;color:#8a8b8f;margin-right:2px">灯光主题演示：</span>
+  <button data-demo="ocean">碧波</button>
+  <button data-demo="aurora">极光</button>
+  <button data-demo="blossom">落英</button>
+  <button data-demo="sunrise">旭日</button>
+  <button data-demo="fireplace" class="on">炉火</button>
+</div>
+<div class="frame"><soundsticks5-lovelace-card id="card"></soundsticks5-lovelace-card></div>
+
+<!-- 先加载卡片定义，再做模拟初始化（否则 custom element 未注册，setConfig 不存在） -->
+<script src="./soundsticks5-lovelace.js"></script>
+<script>
+/* ---- 简易 ha-icon（预览用，HA 内由前端提供真实 MDI） ---- */
+const MDI = {
+  "mdi:play": "M8,5.14V19.14L19,12.14L8,5.14Z",
+  "mdi:pause": "M14,19H18V5H14M6,19H10V5H6V19Z",
+  "mdi:skip-next": "M16,18H18V6H16M6,18L14.5,12L6,6V18Z",
+  "mdi:skip-previous": "M6,18V6H8V18H6M9.5,12L18,6V18L9.5,12Z",
+  "mdi:refresh": "M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z",
+  "mdi:bluetooth": "M14.88,16.29L13,18.17V14.41M13,5.83L14.88,7.71L13,9.58M17.71,7.71L12,2H11V9.58L6.41,5L5,6.41L10.59,12L5,17.58L6.41,19L11,14.41V22H12L17.71,16.29L13.41,12L17.71,7.71Z",
+  "mdi:bluetooth-off": "M13,5.83L14.88,7.71L13,9.58M17.71,7.71L12,2H11V9.58L6.41,5L5,6.41L10.59,12L5,17.58L6.41,19L11,14.41V22H12L17.71,16.29L13.41,12L17.71,7.71Z",
+  "mdi:volume-low": "M7,9V15H11L16,20V4L11,9H7Z",
+  "mdi:volume-high": "M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12A4.5,4.5 0 0,0 14,7.97V16A4.5,4.5 0 0,0 16.5,12M3,9V15H7L12,20V4L7,9H3Z",
+};
+class HaIcon extends HTMLElement {
+  static get observedAttributes(){ return ["icon"]; }
+  connectedCallback(){ this._draw(); }
+  attributeChangedCallback(){ this._draw(); }
+  _draw(){
+    const d = MDI[this.getAttribute("icon")] || "";
+    const size = getComputedStyle(this).getPropertyValue("--mdc-icon-size") || "24px";
+    this.style.display = "inline-flex";
+    this.innerHTML = `<svg viewBox="0 0 24 24" width="${parseInt(size)||24}" height="${parseInt(size)||24}" fill="currentColor"><path d="${d}"/></svg>`;
+  }
+}
+customElements.define("ha-icon", HaIcon);
+
+/* ---- 模拟 hass ---- */
+const states = {
+  "media_player.soundsticks_5_media":        { state: "playing", attributes: { volume_level: 0.62, media_title: "Blinding Lights", media_artist: "The Weeknd" } },
+  "light.soundsticks_5_lighting":            { state: "on", attributes: {} },
+  "select.soundsticks_5_lighting_theme":     { state: "fireplace", attributes: {} },
+  "number.soundsticks_5_lighting_theme_color": { state: "72", attributes: {} },
+  "number.soundsticks_5_lighting_brightness":  { state: "80", attributes: {} },
+  "select.soundsticks_5_lighting_speed":     { state: "medium", attributes: {} },
+  "number.soundsticks_5_eq_125":   { state: "-2", attributes: {} },
+  "number.soundsticks_5_eq_250":   { state: "0",  attributes: {} },
+  "number.soundsticks_5_eq_500":   { state: "3",  attributes: {} },
+  "number.soundsticks_5_eq_1000":  { state: "6",  attributes: {} },
+  "number.soundsticks_5_eq_2000":  { state: "4",  attributes: {} },
+  "number.soundsticks_5_eq_4000":  { state: "0",  attributes: {} },
+  "number.soundsticks_5_eq_8000":  { state: "-3", attributes: {} },
+  "switch.soundsticks_5_feedback_tone": { state: "on", attributes: {} },
+  "select.soundsticks_5_auto_off": { state: "1_hour", attributes: {} },
+  "sensor.soundsticks_5_operating_state": { state: "active", attributes: {} },
+  "select.soundsticks_5_preset":   { state: "Evening", attributes: { options: ["Evening", "Party", "Focus"] } },
+};
+
+const KEY2EID = {
+  media_player:"media_player.soundsticks_5_media",
+  lighting:"light.soundsticks_5_lighting",
+  theme:"select.soundsticks_5_lighting_theme",
+  color:"number.soundsticks_5_lighting_theme_color",
+  brightness:"number.soundsticks_5_lighting_brightness",
+  speed:"select.soundsticks_5_lighting_speed",
+  feedback_tone:"switch.soundsticks_5_feedback_tone",
+  auto_off:"select.soundsticks_5_auto_off",
+  operating_state:"sensor.soundsticks_5_operating_state",
+  preset:"select.soundsticks_5_preset",
+};
+for (const hz of [125,250,500,1000,2000,4000,8000]) KEY2EID["eq_"+hz] = `number.soundsticks_5_eq_${hz}`;
+// 按钮类实体也登记，保证 discovery 能映射
+for (const k of ["color_reset","eq_reset","refresh_state","release_ble"]) KEY2EID[k] = `button.soundsticks_5_${k}`;
+
+const card = document.getElementById("card");
+function update(){ card.hass = hass; }
+
+const hass = {
+  language: "zh",
+  states,
+  callWS: async (msg) => {
+    if (msg.type === "config/entity_registry/list")
+      return Object.entries(KEY2EID).map(([key, eid]) => ({ platform: "soundsticks5", unique_id: "soundsticks5_" + key, entity_id: eid }));
+    return {};
+  },
+  callService: async (domain, service, data) => {
+    const eid = data.entity_id;
+    const st = states[eid];
+    if (service === "volume_set" && st) st.attributes.volume_level = data.volume_level;
+    if (service === "set_value" && st) st.state = String(data.value);
+    if (service === "select_option" && st) st.state = data.option;
+    if (service === "turn_on" && st) st.state = "on";
+    if (service === "turn_off" && st) st.state = "off";
+    if (service === "media_play_pause" && st) st.state = st.state === "playing" ? "paused" : "playing";
+    if (domain === "soundsticks5" && service === "save_preset") {
+      const p = states["select.soundsticks_5_preset"];
+      p.attributes.options.push(data.name); p.state = data.name;
+    }
+    if (domain === "soundsticks5" && service === "delete_preset") {
+      const p = states["select.soundsticks_5_preset"];
+      p.attributes.options = p.attributes.options.filter(o => o !== data.name);
+      p.state = p.attributes.options[0] || "unknown";
+    }
+    update();
+  },
+};
+
+const previewWidth = Number(new URLSearchParams(location.search).get("width"));
+if (previewWidth >= 320 && previewWidth <= 960) document.querySelector(".frame").style.maxWidth = `${previewWidth}px`;
+card.setConfig({ image: "./assets/soundsticks5.png?source=app-original" });
+update();
+
+/* 主题演示切换 */
+document.querySelectorAll("[data-demo]").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-demo]").forEach((x) => x.classList.remove("on"));
+  b.classList.add("on");
+  states["select.soundsticks_5_lighting_theme"].state = b.dataset.demo;
+  states["light.soundsticks_5_lighting"].state = "on";
+  update();
+}));
+</script>
+</body>
+</html>
