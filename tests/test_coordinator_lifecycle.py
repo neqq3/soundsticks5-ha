@@ -141,6 +141,50 @@ async def test_retry_budget_is_two_attempts(monkeypatch):
     sleep.assert_awaited_once_with(1.5)
 
 
+@pytest.mark.parametrize("error_kind", [TimeoutError, OSError, EOFError])
+async def test_transport_failure_has_actionable_translation(monkeypatch, error_kind):
+    from homeassistant.exceptions import HomeAssistantError
+
+    coordinator = SoundSticksCoordinator.__new__(SoundSticksCoordinator)
+    coordinator._disconnect = AsyncMock()
+    error = error_kind("connection interrupted")
+    operation = AsyncMock(side_effect=error)
+    monkeypatch.setattr("custom_components.soundsticks5.coordinator.asyncio.sleep", AsyncMock())
+    with pytest.raises(HomeAssistantError) as raised:
+        await coordinator._with_retries(operation)
+    assert raised.value.translation_domain == "soundsticks5"
+    assert raised.value.translation_key == "ble_control_failed"
+    assert raised.value.__cause__ is error
+    assert coordinator.last_ble_error == error_kind.__name__
+    assert operation.await_count == 2
+
+
+async def test_proxy_disconnect_gets_same_hint_without_claiming_app_is_connected(monkeypatch):
+    from bleak import BleakError
+    from homeassistant.exceptions import HomeAssistantError
+
+    coordinator = SoundSticksCoordinator.__new__(SoundSticksCoordinator)
+    coordinator._disconnect = AsyncMock()
+    error = BleakError("Peripheral changed connection status while waiting for BluetoothGATTNotifyResponse")
+    monkeypatch.setattr("custom_components.soundsticks5.coordinator.asyncio.sleep", AsyncMock())
+    with pytest.raises(HomeAssistantError) as raised:
+        await coordinator._with_retries(AsyncMock(side_effect=error))
+    assert raised.value.translation_key == "ble_control_failed"
+    assert raised.value.__cause__ is error
+
+
+async def test_readback_mismatch_is_not_reported_as_connection_failure(monkeypatch):
+    from homeassistant.helpers.update_coordinator import UpdateFailed
+
+    coordinator = SoundSticksCoordinator.__new__(SoundSticksCoordinator)
+    coordinator._disconnect = AsyncMock()
+    error = UpdateFailed("EQ readback did not match the requested snapshot")
+    monkeypatch.setattr("custom_components.soundsticks5.coordinator.asyncio.sleep", AsyncMock())
+    with pytest.raises(UpdateFailed) as raised:
+        await coordinator._with_retries(AsyncMock(side_effect=error))
+    assert raised.value is error
+
+
 async def test_eq_slider_coalesces_superseded_positions(monkeypatch):
     coordinator = SoundSticksCoordinator.__new__(SoundSticksCoordinator)
     coordinator._io_lock = asyncio.Lock()

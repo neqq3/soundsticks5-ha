@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><defs><mask id="fiveCut"><rect width="256" height="256" fill="white"/>
+  <g transform="translate(14 92) scale(.43)"><path d="M257 40C211 40 177 47 164 78C151 110 151 173 150 217C149 253 158 280 177 296C197 312 224 313 257 313C291 313 322 311 341 295C359 280 366 253 365 217C364 171 365 111 351 79C337 47 304 40 257 40Z" fill="black"/></g>
+  <path d="M12 127H99V174H12Z" fill="black"/>
+  </mask></defs><g mask="url(#fiveCut)" fill="#202427"><path d="M221 20H42V146H89L62 168L31 173C25 217 67 245 129 245C190 245 234 221 236 180C238 139 214 99 163 99H88V66H221Z"/></g>
+  <g transform="translate(14 92) scale(.43)"><path d="M153 217C190 247 324 247 362 217" fill="none" stroke="#202427" stroke-width="8"/></g></svg>

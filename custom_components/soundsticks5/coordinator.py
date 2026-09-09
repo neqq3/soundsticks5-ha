@@ -14,6 +14,7 @@ from homeassistant.components import bluetooth
 from homeassistant.components.bluetooth import BluetoothChange, BluetoothServiceInfoBleak
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
@@ -21,6 +22,7 @@ from .const import (
     BLE_IDLE_DISCONNECT_SECONDS,
     COMMAND_UUID,
     CONTROL_SERVICE_UUID,
+    DOMAIN,
     FAST_PAIR_UUID,
     HARMAN_DISCOVERY_UUID,
     NAME,
@@ -276,6 +278,11 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
                 if attempt < 1:
                     await asyncio.sleep(1.5 * (2**attempt))
         assert last_error is not None
+        if isinstance(last_error, (TimeoutError, OSError, EOFError, BleakError)):
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="ble_control_failed",
+            ) from last_error
         raise last_error
 
     async def _query_locked(self, payload: bytes, response_command: int) -> Frame:
@@ -358,7 +365,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
             await refresh_ble()
         except Exception as exc:
             self.ble_available = False
-            self.last_ble_error = type(exc).__name__
+            self.last_ble_error = type(exc.__cause__ or exc).__name__
             # Discovery and an explicit command can recover later. Do not
             # reject config-entry setup merely because another central owns
             # GATT or a remote proxy is temporarily unavailable at startup.

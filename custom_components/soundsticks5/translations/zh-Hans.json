@@ -8,6 +8,9 @@
     "error": {"not_found": "当前未发现可识别的 SoundSticks 5 广播。"},
     "abort": {"already_configured": "SoundSticks 5 已配置。", "single_instance_allowed": "在确认独立于 RPA 的稳定身份前，仅支持一台音箱。"}
   },
+  "exceptions": {
+    "ble_control_failed": {"message": "蓝牙 BLE 控制失败：连接中断或音箱未响应。HK One 或其他 App 可能正在占用音箱的蓝牙 BLE 控制连接。请完全退出这些 App，等待几秒后重试；不需要断开用于播放音乐的蓝牙音频连接。若仍失败，请检查音箱是否唤醒、是否在蓝牙 BLE 覆盖范围内，以及蓝牙 BLE 适配器或代理是否可用。"}
+  },
   "entity": {
     "light": {"lighting": {"name": "灯光"}},
     "select": {

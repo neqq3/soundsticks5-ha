@@ -8,6 +8,9 @@
     "error": {"not_found": "No recognizable SoundSticks 5 advertisement was found."},
     "abort": {"already_configured": "SoundSticks 5 is already configured.", "single_instance_allowed": "Only one speaker is supported until a stable identity independent of RPA is confirmed."}
   },
+  "exceptions": {
+    "ble_control_failed": {"message": "Bluetooth BLE control failed because the connection was interrupted or the speaker did not respond. HK One or another app may be using the speaker’s Bluetooth BLE control connection. Fully close these apps, wait a few seconds, and try again; you do not need to disconnect the Bluetooth audio connection used for music playback. If it still fails, check that the speaker is awake and within Bluetooth BLE range, and that the Bluetooth BLE adapter or proxy is available."}
+  },
   "entity": {
     "light": {"lighting": {"name": "Lighting"}},
     "select": {
