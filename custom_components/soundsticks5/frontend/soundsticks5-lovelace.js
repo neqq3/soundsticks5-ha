@@ -1,13 +1,6 @@
 /**
- * SoundSticks 5 — Lovelace card in the official Harman Kardon design language.
- *
- * 独立自定义卡片：不修改 soundsticks5 集成，HACS 升级不覆盖。
- * 通过稳定 unique_id（soundsticks5_*）自动发现实体，与集成内置卡片同一套实体。
- *
- * 设计语言来源：HK One App（harman / kardon）
- *   浅灰底 + 纯白大圆角卡 + 超大留白 + 细字重无衬线
- *   harman / kardon 品牌字 · SOUNDSTICKS 5 小字全大写
- *   柔和主题色块 · 整条渐变色滑块 · 分段胶囊速度钮 · 黑色 iOS toggle
+ * SoundSticks 5 card — bundled card for the SoundSticks 5 speaker integration.
+ * Discovers integration entities through their stable soundsticks5_* unique IDs.
  */
 
 const THEMES = {
@@ -615,5 +608,17 @@ class SoundSticks5LovelaceEditor extends HTMLElement {
 if (!customElements.get("soundsticks5-lovelace-editor")) customElements.define("soundsticks5-lovelace-editor", SoundSticks5LovelaceEditor);
 if (!customElements.get("soundsticks5-lovelace-card")) customElements.define("soundsticks5-lovelace-card", SoundSticks5LovelaceCard);
 window.customCards = window.customCards || [];
-if (!window.customCards.some((c) => c.type === "soundsticks5-lovelace-card"))
-  window.customCards.push({ type: "soundsticks5-lovelace-card", name: "SoundSticks 5 (HK design)", description: "Harman Kardon design-language card for SoundSticks 5" });
+const soundsticks5CardMetadata = {
+  type: "soundsticks5-lovelace-card",
+  name: "SoundSticks 5 card",
+  get description() {
+    const hass = document.querySelector("home-assistant")?.hass;
+    const language = hass?.locale?.language || hass?.language || document.documentElement.lang || navigator.language || "en";
+    return language.toLowerCase().startsWith("zh")
+      ? "为 SoundSticks 5 音箱集成提供的卡片。"
+      : "A card for the SoundSticks 5 speaker integration.";
+  },
+};
+const soundsticks5CardIndex = window.customCards.findIndex((c) => c.type === soundsticks5CardMetadata.type);
+if (soundsticks5CardIndex === -1) window.customCards.push(soundsticks5CardMetadata);
+else window.customCards[soundsticks5CardIndex] = soundsticks5CardMetadata;
