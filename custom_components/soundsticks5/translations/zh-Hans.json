@@ -11,6 +11,38 @@
   "exceptions": {
     "ble_control_failed": {"message": "蓝牙 BLE 控制失败：连接中断或音箱未响应。HK One 或其他 App 可能正在占用音箱的蓝牙 BLE 控制连接。请完全退出这些 App，等待几秒后重试；不需要断开用于播放音乐的蓝牙音频连接。若仍失败，请检查音箱是否唤醒、是否在蓝牙 BLE 覆盖范围内，以及蓝牙 BLE 适配器或代理是否可用。"}
   },
+  "services": {
+    "save_preset": {
+      "name": "保存场景预设",
+      "description": "读取音箱当前状态，保存灯光、音量、均衡器、反馈音和自动关闭设置。",
+      "fields": {
+        "name": {
+          "name": "预设名称",
+          "description": "为预设填写一个简短名称。如果已有同名预设，将覆盖它。"
+        }
+      }
+    },
+    "apply_preset": {
+      "name": "应用场景预设",
+      "description": "应用已保存的场景预设。设置会依次发送；如果中途失败，部分设置可能已生效。",
+      "fields": {
+        "name": {
+          "name": "预设名称",
+          "description": "填写要应用的已保存预设的完整名称。"
+        }
+      }
+    },
+    "delete_preset": {
+      "name": "删除场景预设",
+      "description": "删除已保存的场景预设，不改变音箱当前设置。",
+      "fields": {
+        "name": {
+          "name": "预设名称",
+          "description": "填写要删除的已保存预设的完整名称。"
+        }
+      }
+    }
+  },
   "entity": {
     "light": {"lighting": {"name": "灯光"}},
     "select": {

@@ -11,6 +11,38 @@
   "exceptions": {
     "ble_control_failed": {"message": "Bluetooth BLE control failed because the connection was interrupted or the speaker did not respond. HK One or another app may be using the speaker’s Bluetooth BLE control connection. Fully close these apps, wait a few seconds, and try again; you do not need to disconnect the Bluetooth audio connection used for music playback. If it still fails, check that the speaker is awake and within Bluetooth BLE range, and that the Bluetooth BLE adapter or proxy is available."}
   },
+  "services": {
+    "save_preset": {
+      "name": "Save preset",
+      "description": "Refresh the speaker state and save its lighting, volume, EQ, feedback-tone and auto-off settings.",
+      "fields": {
+        "name": {
+          "name": "Preset name",
+          "description": "A short name for the preset. An existing preset with the same name will be overwritten."
+        }
+      }
+    },
+    "apply_preset": {
+      "name": "Apply preset",
+      "description": "Apply a previously saved preset. Settings are sent in sequence; a failure may leave some settings applied.",
+      "fields": {
+        "name": {
+          "name": "Preset name",
+          "description": "The exact name of the saved preset to apply."
+        }
+      }
+    },
+    "delete_preset": {
+      "name": "Delete preset",
+      "description": "Delete a saved preset without changing the speaker settings.",
+      "fields": {
+        "name": {
+          "name": "Preset name",
+          "description": "The exact name of the saved preset to delete."
+        }
+      }
+    }
+  },
   "entity": {
     "light": {"lighting": {"name": "Lighting"}},
     "select": {
