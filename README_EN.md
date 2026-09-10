@@ -36,6 +36,10 @@ See [Entities and mappings](docs/entities.md) for complete behavior and scale ma
 
 The repository includes a bundled [SoundSticks 5 Lovelace card](soundsticks5-card/README.md) with lighting, volume, EQ, presets, and selectable playback sources. The card and image ship with the integration. In storage resource mode the integration registers and updates the card resource automatically; refresh your browser and add the card to a dashboard. For YAML resources, follow the getting-started guide.
 
+Full 380px narrow preview (0.9.1, example state):
+
+<img src="docs/images/soundsticks5-card-380px.png" alt="Full narrow preview of the SoundSticks 5 card, including playback controls, lighting, equalizer, scene presets, and product settings" width="380">
+
 ## Safety and status
 
 There is no arbitrary GATT write surface. OTA, firmware transfer, factory reset, unbinding, and unknown commands are intentionally absent. Diagnostics redact addresses, title, and artist.
