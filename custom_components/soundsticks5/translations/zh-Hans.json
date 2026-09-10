@@ -28,7 +28,7 @@
       "fields": {
         "name": {
           "name": "预设名称",
-          "description": "填写要应用的已保存预设的完整名称。"
+          "description": "选择要应用的已保存预设。"
         }
       }
     },
@@ -38,7 +38,7 @@
       "fields": {
         "name": {
           "name": "预设名称",
-          "description": "填写要删除的已保存预设的完整名称。"
+          "description": "选择要删除的已保存预设。"
         }
       }
     }

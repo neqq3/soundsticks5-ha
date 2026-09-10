@@ -8,7 +8,10 @@ save_preset:
       required: true
       example: Evening
       selector:
-        text:
+        select:
+          options: []
+          mode: dropdown
+          custom_value: true
 
 apply_preset:
   name: Apply preset
@@ -19,7 +22,9 @@ apply_preset:
       required: true
       example: Evening
       selector:
-        text:
+        select:
+          options: []
+          mode: dropdown
 
 delete_preset:
   name: Delete preset
@@ -30,4 +35,6 @@ delete_preset:
       required: true
       example: Evening
       selector:
-        text:
+        select:
+          options: []
+          mode: dropdown

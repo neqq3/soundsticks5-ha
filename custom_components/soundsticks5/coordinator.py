@@ -55,6 +55,7 @@ from .protocol import (
     build_volume,
     gain_db_to_app_eq_step,
 )
+from .services import async_update_preset_choices
 
 _LOGGER = logging.getLogger(__name__)
 WaitPredicate = Callable[[Frame], bool]
@@ -512,6 +513,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
             options={**self.entry.options, PRESETS_OPTION: presets},
         )
         self.last_applied_preset = clean_name
+        async_update_preset_choices(self.hass, presets)
         self.async_update_listeners()
 
     async def async_delete_preset(self, name: str) -> None:
@@ -526,6 +528,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
         )
         if self.last_applied_preset == name:
             self.last_applied_preset = None
+        async_update_preset_choices(self.hass, presets)
         self.async_update_listeners()
 
     async def async_apply_preset(self, name: str) -> None:

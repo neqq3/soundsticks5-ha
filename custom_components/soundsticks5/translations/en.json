@@ -28,7 +28,7 @@
       "fields": {
         "name": {
           "name": "Preset name",
-          "description": "The exact name of the saved preset to apply."
+          "description": "Choose the saved preset to apply."
         }
       }
     },
@@ -38,7 +38,7 @@
       "fields": {
         "name": {
           "name": "Preset name",
-          "description": "The exact name of the saved preset to delete."
+          "description": "Choose the saved preset to delete."
         }
       }
     }

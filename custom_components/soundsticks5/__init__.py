@@ -9,6 +9,7 @@ from homeassistant.helpers import entity_registry as er
 from .const import DOMAIN, PLATFORMS
 from .coordinator import SoundSticksCoordinator
 from .frontend import async_setup_frontend
+from .services import async_update_preset_choices
 
 
 async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
@@ -39,6 +40,7 @@ async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
     hass.services.async_register(DOMAIN, "save_preset", _save_preset)
     hass.services.async_register(DOMAIN, "apply_preset", _apply_preset)
     hass.services.async_register(DOMAIN, "delete_preset", _delete_preset)
+    async_update_preset_choices(hass, ())
     return True
 
 
@@ -69,6 +71,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_stop()
         raise
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    async_update_preset_choices(hass, coordinator.presets)
     return True
 
 
@@ -77,4 +80,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         await coordinator.async_stop()
+        async_update_preset_choices(hass, ())
     return unloaded
