@@ -1,9 +1,10 @@
-from custom_components.soundsticks5.const import (
-    CONTROL_SERVICE_UUID,
-    FAST_PAIR_UUID,
-    HARMAN_DISCOVERY_UUID,
-)
-from custom_components.soundsticks5.discovery import matches_soundsticks5_advertisement
+from .load_protocol import load_module
+
+discovery = load_module("discovery")
+CONTROL_SERVICE_UUID = discovery.CONTROL_SERVICE_UUID
+FAST_PAIR_UUID = discovery.FAST_PAIR_UUID
+HARMAN_DISCOVERY_UUID = discovery.HARMAN_DISCOVERY_UUID
+matches_soundsticks5_advertisement = discovery.matches_soundsticks5_advertisement
 
 
 def test_matches_current_awake_advertisement():
@@ -16,6 +17,23 @@ def test_matches_current_awake_advertisement():
 
 def test_matches_private_control_service_advertisement():
     assert matches_soundsticks5_advertisement(None, [CONTROL_SERVICE_UUID], {})
+
+
+def test_matches_named_service_data_only_advertisement():
+    # Orange Pi / BlueZ observation: FDDF and FE2C data, empty UUID list.
+    # Payload identity bytes are omitted; matching does not interpret them.
+    assert matches_soundsticks5_advertisement(
+        "SoundSticks 5", [],
+        {HARMAN_DISCOVERY_UUID: b"\x31\x21", FAST_PAIR_UUID: b"\x00\x00"},
+    )
+    # FDDF callback must also work without an unrelated Fast Pair field.
+    assert matches_soundsticks5_advertisement(
+        "SoundSticks 5", [], {HARMAN_DISCOVERY_UUID.upper(): b"\x31\x21"},
+    )
+    assert not matches_soundsticks5_advertisement(
+        "Other Harman Speaker", [], {HARMAN_DISCOVERY_UUID: b"\x31\x21"},
+    )
+    assert not matches_soundsticks5_advertisement("SoundSticks 5", [], {})
 
 
 def test_matches_observed_anonymous_standby_marker():

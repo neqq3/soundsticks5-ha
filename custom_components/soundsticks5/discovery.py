@@ -28,7 +28,12 @@ def matches_soundsticks5_advertisement(
 
     if CONTROL_SERVICE_UUID in normalized_uuids:
         return True
-    if "soundsticks 5" in (name or "").lower() and HARMAN_DISCOVERY_UUID in normalized_uuids:
+    # BlueZ can report FDDF only as service data, with no service UUID list.
+    # Requiring it in service_uuids drops a directly observed awake speaker.
+    has_harman_service = (
+        HARMAN_DISCOVERY_UUID in normalized_uuids or HARMAN_DISCOVERY_UUID in normalized_data
+    )
+    if "soundsticks 5" in (name or "").lower() and has_harman_service:
         return True
     # BlueZ/HA may expose the address as BLEDevice.name when the advertising
     # packet has no local name.  Treat both representations as anonymous.  A

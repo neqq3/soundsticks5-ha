@@ -73,6 +73,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
         self.entry = entry
         self.state = DeviceState()
         self.ble_device: BLEDevice | None = None
+        self._advertisement_time = float("-inf")
         self.ble_available = False
         self.ble_status = "not_seen"
         self.last_ble_error: str | None = None
@@ -106,10 +107,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
 
     async def async_start(self) -> None:
         """Start watching advertisements without retaining an RPA as identity."""
-        for info in bluetooth.async_discovered_service_info(self.hass, connectable=True):
-            if self._matches_advertisement(info):
-                self._remember(info)
-                break
+        self._refresh_advertisement()
 
         @callback
         def _on_bluetooth(info: BluetoothServiceInfoBleak, _change: BluetoothChange) -> None:
@@ -119,6 +117,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
         for matcher in (
             {"service_uuid": CONTROL_SERVICE_UUID, "connectable": True},
             {"service_uuid": HARMAN_DISCOVERY_UUID, "connectable": True},
+            {"service_data_uuid": HARMAN_DISCOVERY_UUID, "connectable": True},
             {"service_data_uuid": FAST_PAIR_UUID, "connectable": True},
         ):
             self._unsubs.append(
@@ -134,7 +133,21 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
         return matches_soundsticks5_advertisement(info.name, info.service_uuids, info.service_data)
 
     @callback
+    def _refresh_advertisement(self) -> None:
+        """Prefer the latest observed RPA, regardless of awake/standby format."""
+        candidates = (
+            info for info in bluetooth.async_discovered_service_info(self.hass, connectable=True)
+            if self._matches_advertisement(info)
+        )
+        latest = max(candidates, key=lambda info: info.time, default=None)
+        if latest is not None:
+            self._remember(latest)
+
+    @callback
     def _remember(self, info: BluetoothServiceInfoBleak) -> None:
+        if info.time < self._advertisement_time:
+            return
+        self._advertisement_time = info.time
         became_available = not self.ble_available
         self.ble_device = info.device
         self.rssi = info.rssi
@@ -208,12 +221,13 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
 
     async def _ensure_connected(self) -> BleakClient:
         self._cancel_scheduled_disconnect()
-        if self.ble_device is None:
-            raise UpdateFailed("speaker has not been seen by Home Assistant Bluetooth")
         if self._client is not None and self._client.is_connected:
             # A later advertisement may carry a new RPA while the current
             # connection is still valid. Keep the live link authoritative.
             return self._client
+        self._refresh_advertisement()
+        if self.ble_device is None:
+            raise UpdateFailed("speaker has not been seen by Home Assistant Bluetooth")
         if self._client is not None:
             await self._disconnect()
         self.ble_status = "connecting"
@@ -321,6 +335,25 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
                 and item.data[1] == 0,
             )
             await self._query_locked(QUERY_AGGREGATE, 0x42)
+
+        async with self._io_lock:
+            try:
+                await self._with_retries(command_and_readback)
+                self.ble_available = True
+            finally:
+                self._schedule_disconnect()
+        self.async_set_updated_data(self.state)
+
+    async def async_set_auto_off(self, value: str | int) -> None:
+        """Read back the timer: setting its duration also restarts it."""
+        payload = build_auto_off(value)
+
+        async def command_and_readback() -> None:
+            await self._write_wait(
+                payload,
+                lambda item: item.command == 0x00 and item.data == b"\xba\x00",
+            )
+            await self._query_locked(QUERY_AUTO_OFF, 0xB9)
 
         async with self._io_lock:
             try:
@@ -582,16 +615,7 @@ class SoundSticksCoordinator(DataUpdateCoordinator[DeviceState]):
                 state_update=lambda state: setattr(state, "feedback_tone", value),
             )
         if preset.get("auto_off") in AUTO_OFF_BY_SECONDS.values():
-            value = preset["auto_off"]
-            await self.async_command(
-                build_auto_off(value),
-                ack_command=0xBA,
-                state_update=lambda state: setattr(
-                    state,
-                    "auto_off_configured",
-                    next(key for key, item in AUTO_OFF_BY_SECONDS.items() if item == value),
-                ),
-            )
+            await self.async_set_auto_off(preset["auto_off"])
         if isinstance(preset.get("light_power"), bool):
             value = preset["light_power"]
             await self.async_command(

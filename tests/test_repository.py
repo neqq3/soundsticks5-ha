@@ -14,6 +14,11 @@ def test_manifest_and_translations_are_valid():
         "local_name": "SoundSticks 5*",
         "connectable": True,
     }
+    assert {
+        "service_data_uuid": "0000fddf-0000-1000-8000-00805f9b34fb",
+        "local_name": "SoundSticks 5*",
+        "connectable": True,
+    } in manifest["bluetooth"]
     for path in (ROOT / "custom_components/soundsticks5").glob("**/*.json"):
         json.loads(path.read_text(encoding="utf-8"))
 

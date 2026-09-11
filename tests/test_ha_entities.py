@@ -47,6 +47,19 @@ async def test_light_always_sends_on_even_when_cached_state_is_stale():
     assert fake.async_command.await_args.args[0].hex() == "aa330400990101"
 
 
+async def test_standby_does_not_disable_light_configuration():
+    fake = coordinator(DeviceState(light_power=True, auto_off_configured=600, auto_off_remaining=0, playback=1))
+    fake.operating_state = "standby"
+    entity = SoundSticksLight(fake)
+    assert entity.available
+    await entity.async_turn_on(brightness=204)
+    assert fake.async_command.await_args_list[0].args[0].hex() == "aa330400450150"
+    assert fake.async_command.await_args_list[1].args[0].hex() == "aa330400990101"
+    # Writing lighting configuration must not invent a physical wake event.
+    assert fake.state.auto_off_remaining == 0
+    assert fake.state.playback == 1
+
+
 async def test_dedicated_brightness_uses_app_percent_scale():
     fake = coordinator(DeviceState(light_power=True, brightness=20))
     entity = SoundSticksBrightness(fake)

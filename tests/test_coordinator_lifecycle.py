@@ -1,6 +1,6 @@
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -8,6 +8,38 @@ pytest.importorskip("homeassistant")
 
 from custom_components.soundsticks5.coordinator import SoundSticksCoordinator
 from custom_components.soundsticks5.protocol import DeviceState, Frame
+
+
+async def test_service_data_callback_updates_rotating_address():
+    from custom_components.soundsticks5.const import HARMAN_DISCOVERY_UUID
+
+    coordinator = SoundSticksCoordinator.__new__(SoundSticksCoordinator)
+    coordinator.hass = Mock()
+    coordinator.ble_device = SimpleNamespace(address="old-rpa")
+    coordinator._advertisement_time = 0
+    coordinator.ble_available = False
+    coordinator.ble_status = "not_seen"
+    coordinator._unsubs = []
+    coordinator.async_update_listeners = Mock()
+    with (
+        patch("custom_components.soundsticks5.coordinator.bluetooth.async_discovered_service_info", return_value=[]),
+        patch("custom_components.soundsticks5.coordinator.bluetooth.async_register_callback") as register,
+    ):
+        await coordinator.async_start()
+    handler = next(
+        call.args[1] for call in register.call_args_list
+        if call.args[2].get("service_data_uuid") == HARMAN_DISCOVERY_UUID
+    )
+    info = SimpleNamespace(
+        name="SoundSticks 5", service_uuids=[],
+        service_data={HARMAN_DISCOVERY_UUID: b"\x31\x21"},
+        device=SimpleNamespace(address="new-rpa"), rssi=-70, time=10,
+    )
+    handler(info, None)
+    assert coordinator.ble_device.address == "new-rpa"
+    assert coordinator.ble_available
+    assert coordinator.rssi == -70
+    coordinator.async_update_listeners.assert_called_once()
 
 
 async def test_live_connection_survives_new_rpa_advertisement():
@@ -18,6 +50,60 @@ async def test_live_connection_survives_new_rpa_advertisement():
     coordinator._client = live_client
 
     assert await coordinator._ensure_connected() is live_client
+
+
+@pytest.mark.parametrize("standby_latest", [True, False])
+async def test_start_uses_newest_awake_or_standby_address(standby_latest):
+    from custom_components.soundsticks5.const import FAST_PAIR_UUID, HARMAN_DISCOVERY_UUID
+
+    awake = SimpleNamespace(
+        name="SoundSticks 5", service_uuids=[], service_data={HARMAN_DISCOVERY_UUID: b"\x31\x21"},
+        device=SimpleNamespace(address="awake-rpa"), rssi=-40, time=10 if standby_latest else 20,
+    )
+    standby = SimpleNamespace(
+        name="AA:BB:CC:DD:EE:FF", service_uuids=[], service_data={FAST_PAIR_UUID: b"\x00\x00"},
+        device=SimpleNamespace(address="standby-rpa"), rssi=-70, time=20 if standby_latest else 10,
+    )
+    coordinator = SoundSticksCoordinator.__new__(SoundSticksCoordinator)
+    coordinator.hass = Mock()
+    coordinator._advertisement_time = float("-inf")
+    coordinator.ble_device = None
+    coordinator.ble_available = False
+    coordinator.ble_status = "not_seen"
+    coordinator._unsubs = []
+    coordinator.async_update_listeners = Mock()
+    with (
+        patch("custom_components.soundsticks5.coordinator.bluetooth.async_discovered_service_info", return_value=[awake, standby]),
+        patch("custom_components.soundsticks5.coordinator.bluetooth.async_register_callback") as register,
+    ):
+        await coordinator.async_start()
+    latest, old = (standby, awake) if standby_latest else (awake, standby)
+    assert coordinator.ble_device is latest.device
+    # Both formats have a registered path; a delayed old advertisement cannot
+    # roll the selected address back after the state transition.
+    for info, uuid in ((awake, HARMAN_DISCOVERY_UUID), (standby, FAST_PAIR_UUID)):
+        handler = next(call.args[1] for call in register.call_args_list if call.args[2].get("service_data_uuid") == uuid)
+        handler(info, None)
+    coordinator._remember(old)
+    assert coordinator.ble_device is latest.device
+
+
+async def test_reconnect_refreshes_candidate_before_gatt_verification():
+    from custom_components.soundsticks5.const import CONTROL_SERVICE_UUID, NOTIFY_UUID
+
+    coordinator = SoundSticksCoordinator.__new__(SoundSticksCoordinator)
+    coordinator._disconnect_task = None
+    coordinator._client = None
+    coordinator.ble_device = SimpleNamespace(address="old-rpa")
+    fresh = SimpleNamespace(address="standby-rpa")
+    coordinator._refresh_advertisement = Mock(side_effect=lambda: setattr(coordinator, "ble_device", fresh))
+    client = SimpleNamespace(
+        services=[SimpleNamespace(uuid=CONTROL_SERVICE_UUID)], start_notify=AsyncMock(), is_connected=True,
+    )
+    with patch("custom_components.soundsticks5.coordinator.establish_connection", new_callable=AsyncMock, return_value=client) as connect:
+        assert await coordinator._ensure_connected() is client
+    assert connect.await_args.args[1] is fresh
+    client.start_notify.assert_awaited_once_with(NOTIFY_UUID, coordinator._notify_from_bleak)
 
 
 async def test_command_uses_notification_cache_without_full_refresh():
@@ -76,6 +162,33 @@ async def test_manual_release_disconnects_immediately():
     coordinator._cancel_scheduled_disconnect.assert_called_once_with()
     coordinator._disconnect.assert_awaited_once_with()
     coordinator.async_update_listeners.assert_called_once_with()
+
+
+async def test_auto_off_setting_reads_restarted_timer_instead_of_retaining_zero():
+    coordinator = SoundSticksCoordinator.__new__(SoundSticksCoordinator)
+    coordinator._io_lock = asyncio.Lock()
+    coordinator.state = DeviceState(auto_off_configured=600, auto_off_remaining=0, playback=1)
+    coordinator._write_wait = AsyncMock(return_value=Frame(0, b"\xba\x00"))
+    coordinator._schedule_disconnect = Mock()
+    coordinator.async_set_updated_data = Mock()
+
+    async def query(payload, response):
+        assert payload == bytes.fromhex("aa b8 00") and response == 0xB9
+        coordinator.state.auto_off_remaining = 596
+
+    async def run(operation):
+        return await operation()
+
+    coordinator._query_locked = AsyncMock(side_effect=query)
+    coordinator._with_retries = AsyncMock(side_effect=run)
+    await coordinator.async_set_auto_off("10_minutes")
+    assert coordinator._write_wait.await_args.args[0] == bytes.fromhex("aa ba 02 58 02")
+    predicate = coordinator._write_wait.await_args.args[1]
+    assert predicate(Frame(0, b"\xba\x00"))
+    assert not predicate(Frame(0, b"\xba\x01"))
+    assert coordinator.state.auto_off_remaining == 596
+    assert coordinator.state.playback == 1
+    coordinator.async_set_updated_data.assert_called_once_with(coordinator.state)
 
 
 async def test_media_command_requires_ack_then_reads_aggregate():

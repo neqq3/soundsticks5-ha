@@ -10,7 +10,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import AUTO_OFF_BY_SECONDS, AUTO_OFF_SECONDS, SPEED_BY_ID, SPEEDS, THEME_BY_ID, THEMES
 from .coordinator import SoundSticksCoordinator
 from .entity import SoundSticksEntity
-from .protocol import build_auto_off, build_speed, build_theme
+from .protocol import build_speed, build_theme
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
@@ -77,11 +77,7 @@ class SoundSticksAutoOff(SoundSticksEntity, SelectEntity):
         return AUTO_OFF_BY_SECONDS.get(self.coordinator.state.auto_off_configured)
 
     async def async_select_option(self, option: str) -> None:
-        await self.coordinator.async_command(
-            build_auto_off(option),
-            ack_command=0xBA,
-            state_update=lambda state: setattr(state, "auto_off_configured", AUTO_OFF_SECONDS[option]),
-        )
+        await self.coordinator.async_set_auto_off(option)
 
 
 class SoundSticksPreset(SoundSticksEntity, SelectEntity):
